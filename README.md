@@ -231,7 +231,7 @@ TianshangGuard/
 
 - **On-device analysis**: All inference runs locally, zero data upload
 - **Open-source auditable**: Code is fully public, community review welcome
-- **Encrypted database**: Room + SQLCipher encrypted storage (optional)
+- **Local storage only**: All data stored locally in Room database, user can export or delete anytime
 - **Minimal permissions**: Only essential permissions requested, user controls each
 
 ### Capability Boundaries
