@@ -76,8 +76,7 @@ class OnnxMlEngine : MlEngine {
 
     fun analyzeSmsScore(text: String): Float {
         // 1. Detect language and get text score
-        val isChinese = text.any { it in '\u4E00'..'\u9FFF' }
-        val textModelType = if (isChinese) ModelType.CHINESE else ModelType.ENGLISH
+        val textModelType = detectLanguage(text)
         val textScore = analyzeWithModelScore(text, textModelType)
 
         // 2. Extract URL from text
@@ -91,6 +90,17 @@ class OnnxMlEngine : MlEngine {
         }
 
         return textScore
+    }
+
+    private fun detectLanguage(text: String): ModelType {
+        val hasHiragana = text.any { it in '\u3040'..'\u309F' }
+        val hasKatakana = text.any { it in '\u30A0'..'\u30FF' }
+        if (hasHiragana || hasKatakana) return ModelType.JAPANESE
+
+        val hasChinese = text.any { it in '\u4E00'..'\u9FFF' }
+        if (hasChinese) return ModelType.CHINESE
+
+        return ModelType.ENGLISH
     }
 
     private fun extractUrl(text: String): String? {

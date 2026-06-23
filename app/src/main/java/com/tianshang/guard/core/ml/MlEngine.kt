@@ -3,7 +3,8 @@ package com.tianshang.guard.core.ml
 enum class ModelType {
     URL,
     CHINESE,
-    ENGLISH
+    ENGLISH,
+    JAPANESE
 }
 
 enum class RiskLevel(val threshold: Float) {

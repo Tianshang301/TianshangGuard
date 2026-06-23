@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Navigation -->
+    <string name="nav_home">ホーム</string>
+    <string name="nav_sms">SMS</string>
+    <string name="nav_stats">統計</string>
+    <string name="nav_settings">設定</string>
+
+    <!-- App Identity -->
+    <string name="app_name">天殇·破妄</string>
+
+    <!-- Common Buttons -->
+    <string name="button_confirm">OK</string>
+    <string name="button_cancel">キャンセル</string>
+    <string name="button_close">閉じる</string>
+    <string name="button_return">戻る</string>
+    <string name="button_back">← 戻る</string>
+    <string name="button_acknowledge">理解しました</string>
+
+    <!-- Common Labels -->
+    <string name="label_domain">ドメイン</string>
+
+    <!-- Home Screen -->
+    <string name="home_subtitle">ネットワークセキュリティを保護中</string>
+    <string name="vpn_status_enabled">VPN保護が有効です</string>
+    <string name="vpn_status_disabled">VPNが無効です</string>
+    <string name="vpn_blocking_phishing">既知のフィッシングドメインをブロック中...</string>
+    <string name="vpn_tap_to_start">タップして保護を開始</string>
+    <string name="vpn_button_stop">VPNを停止</string>
+    <string name="vpn_button_start">VPNを起動</string>
+    <string name="stats_today_title">今日の統計</string>
+    <string name="stats_blocked_domains">ブロック済みドメイン</string>
+    <string name="stats_visited_domains">アクセス済みドメイン</string>
+    <string name="stats_behavior_alerts">行動警報</string>
+    <string name="action_quick_report">クイック報告</string>
+    <string name="action_view_stats">統計を表示</string>
+    <string name="action_full_check">完全チェック</string>
+
+    <!-- Alert Screen -->
+    <string name="alert_screen_share_title">高リスク操作を検出</string>
+    <string name="alert_screen_share_message">画面共有ソフトウェアが実行中に、銀行/決済アプリを使用しています</string>
+    <string name="alert_screen_share_warning">共有中はパスワードの入金、送金、認証コードの表示は避けてください</string>
+    <string name="alert_screen_share_confirm">理解しました、すぐに対応します</string>
+    <string name="alert_phishing_title">フィッシングページ警告</string>
+    <string name="alert_phishing_message">このウェブページはフィッシングサイトの可能性があります。個人情報を入力しないでください</string>
+    <string name="alert_suspicious_domain_title">疑わしいドメイン</string>
+    <string name="alert_blocked_phishing_domain">フィッシングドメインをブロック: %s</string>
+    <string name="alert_sms_phishing_title">SMSフィッシング警告</string>
+    <string name="alert_sms_sender_label">送信者: %s</string>
+    <string name="alert_sms_phishing_message">このSMSにはフィッシングリンクや詐欺メッセージが含まれている可能性があります。リンクをクリックしたり個人情報を返信しないでください</string>
+
+    <!-- Stats Screen -->
+    <string name="stats_screen_title">統計</string>
+    <string name="stats_sms_blocked">SMSブロック</string>
+    <string name="stats_recent_alerts">最近の警報</string>
+    <string name="stats_no_alerts">警報記録なし</string>
+    <string name="alert_type_blocked_domain">ブロック済みドメイン</string>
+    <string name="alert_type_suspicious_domain">疑わしいドメイン</string>
+    <string name="alert_type_phishing_page">ページ警告</string>
+    <string name="alert_type_behavior_alert">行動警報</string>
+    <string name="alert_type_visited_domain">アクセス済みドメイン</string>
+    <string name="alert_type_sms_phishing">SMSフィッシング</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_screen_title">設定</string>
+    <string name="settings_add_whitelist">ホワイトリストに追加</string>
+    <string name="settings_add_blacklist">ブラックリストに追加</string>
+    <string name="settings_section_protection">保護</string>
+    <string name="settings_vpn_auto_start">VPN自動起動</string>
+    <string name="settings_vpn_auto_start_desc">起動時にVPN保護を自動開始</string>
+    <string name="settings_behavior_monitor">行動監視</string>
+    <string name="settings_behavior_monitor_desc">画面共有と銀行アプリの組み合わせを検出</string>
+    <string name="settings_sms_monitor">SMS監視</string>
+    <string name="settings_sms_monitor_desc">疑わしいSMSをリアルタイムで傍受・分析</string>
+    <string name="settings_boot_start">起動時開始</string>
+    <string name="settings_boot_start_desc">システム起動時に自動実行</string>
+    <string name="settings_battery_optimization_section">バッテリー最適化（%s）</string>
+    <string name="settings_battery_optimized">バッテリー最適化が無効です</string>
+    <string name="settings_battery_not_optimized">バッテリー最適化が有効です</string>
+    <string name="settings_battery_optimization">バッテリー最適化を設定</string>
+    <string name="settings_battery_optimization_desc">バックグラウンド実行を許可し、システムによる終了を防止</string>
+    <string name="settings_auto_start">自動起動を設定</string>
+    <string name="settings_auto_start_desc">自動起動ホワイトリストに追加し、起動ブロックを防止</string>
+    <string name="settings_section_list_management">リスト管理</string>
+    <string name="settings_whitelist_management">ホワイトリスト管理</string>
+    <string name="settings_whitelist_management_desc">信頼できるドメインを管理</string>
+    <string name="settings_blacklist_management">ブラックリスト管理</string>
+    <string name="settings_blacklist_management_desc">ブロック済みドメインを管理</string>
+    <string name="settings_section_alerts">警報</string>
+    <string name="settings_sound_alert">サウンドアラート</string>
+    <string name="settings_sound_alert_desc">高リスク警告時にアラート音を再生</string>
+    <string name="settings_vibrate_alert">バイブレーション</string>
+    <string name="settings_vibrate_alert_desc">高リスク警告時にバイブレーション</string>
+    <string name="settings_section_data">データ</string>
+    <string name="settings_export_logs">ログをエクスポート</string>
+    <string name="settings_export_logs_desc">ブロック記録をファイルにエクスポート</string>
+    <string name="settings_clear_data">データをクリア</string>
+    <string name="settings_clear_data_desc">ローカルキャッシュとログをクリア</string>
+    <string name="settings_section_about">について</string>
+    <string name="settings_version">バージョン</string>
+    <string name="settings_license">オープンソースライセンス</string>
+    <string name="settings_check_rule_updates">ルール更新を確認</string>
+
+    <!-- Toast Messages -->
+    <string name="toast_added_domain">追加しました: %s</string>
+    <string name="toast_blocked_domain">ブロックしました: %s</string>
+    <string name="toast_data_cleared">データをクリアしました</string>
+    <string name="toast_rules_updated">ルールが更新されました</string>
+    <string name="toast_enter_domain">ドメインを入力してください</string>
+    <string name="toast_report_submitted">報告が送信されました。ご協力ありがとうございます</string>
+
+    <!-- SMS Screen -->
+    <string name="sms_screen_title">SMS検出</string>
+    <string name="sms_screen_subtitle">疑わしいSMSの内容を貼り付けて、リスクをすばやく分析</string>
+    <string name="sms_sender_label">送信者（任意）</string>
+    <string name="sms_sender_placeholder">例: 10086</string>
+    <string name="sms_body_label">SMS内容</string>
+    <string name="sms_body_placeholder">SMS全文を貼り付け...</string>
+    <string name="sms_button_analyze">分析開始</string>
+    <string name="risk_level_safe">安全</string>
+    <string name="risk_level_suspicious">疑わしい</string>
+    <string name="risk_level_dangerous">危険</string>
+    <string name="sms_risk_level_label">リスクレベル: %s</string>
+    <string name="sms_sender_display">送信者: %s</string>
+    <string name="sms_tip_safe">明らかなフィッシング特徴は検出されませんでしたが、警戒を続けてください。</string>
+    <string name="sms_tip_suspicious">このSMSには疑わしい内容が含まれています。リンクをクリックしたり個人情報を返信しないでください。</string>
+    <string name="sms_tip_dangerous">このSMSは非常に疑わしいです！フィッシングや詐欺の可能性があります。すぐに削除し、応答しないでください。</string>
+
+    <!-- Report Screen -->
+    <string name="report_screen_title">報告</string>
+    <string name="report_screen_subtitle">疑わしいドメインを送信して、保護の改善にご協力ください</string>
+    <string name="report_description_label">説明（任意）</string>
+    <string name="report_description_placeholder">なぜフィッシングサイトだと思いますか？</string>
+    <string name="report_button_submit">報告を送信</string>
+    <string name="report_privacy_notice">報告情報はルールデータベースの改善にのみ使用され、個人情報は収集されません</string>
+
+    <!-- Onboarding Screen -->
+    <string name="onboarding_welcome_title">天殇·破妄へようこそ</string>
+    <string name="onboarding_welcome_desc">オープンソースのAndroid詐欺対策ツール。多層保護でネットワークセキュリティを守ります</string>
+    <string name="onboarding_dns_title">DNS保護</string>
+    <string name="onboarding_dns_desc">既知のフィッシングドメインをブロックし、偽装ドメインやホモグラフ攻撃を検出</string>
+    <string name="onboarding_behavior_title">行動監視</string>
+    <string name="onboarding_behavior_desc">画面共有と銀行アプリの組み合わせを検出し、ソーシャルエンジニアリング攻撃を阻止</string>
+    <string name="onboarding_button_next">次へ</string>
+    <string name="onboarding_button_start">始める</string>
+
+    <!-- Export Log -->
+    <string name="export_log_header">天殇·破妄 ブロックログ</string>
+    <string name="export_log_timestamp">エクスポート時間:</string>
+    <string name="export_share_chooser_title">ログをエクスポート</string>
+</resources>
