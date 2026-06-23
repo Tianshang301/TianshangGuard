@@ -32,8 +32,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tianshang.guard.R
 import com.tianshang.guard.core.ml.RiskLevel
 import com.tianshang.guard.ui.theme.DeepNavy
 import com.tianshang.guard.ui.theme.GuardGreen
@@ -55,9 +57,9 @@ fun SmsScreen() {
     Column(
         modifier = Modifier.fillMaxSize().background(DeepNavy).padding(16.dp).verticalScroll(rememberScrollState())
     ) {
-        Text("\u77ED\u4FE1\u68C0\u6D4B", style = MaterialTheme.typography.headlineLarge, color = OnSurfaceDark)
+        Text(stringResource(R.string.sms_screen_title), style = MaterialTheme.typography.headlineLarge, color = OnSurfaceDark)
         Spacer(modifier = Modifier.height(4.dp))
-        Text("\u7C98\u8D34\u53EF\u7591\u77ED\u4FE1\u5185\u5BB9\uFF0C\u5FEB\u901F\u5206\u6790\u98CE\u9669", style = MaterialTheme.typography.bodyMedium, color = OnSurfaceVariantDark)
+        Text(stringResource(R.string.sms_screen_subtitle), style = MaterialTheme.typography.bodyMedium, color = OnSurfaceVariantDark)
         Spacer(modifier = Modifier.height(20.dp))
 
         Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = SurfaceDark)) {
@@ -65,8 +67,8 @@ fun SmsScreen() {
                 OutlinedTextField(
                     value = sender,
                     onValueChange = { sender = it },
-                    label = { Text("\u53D1\u9001\u65B9\uFF08\u53EF\u9009\uFF09") },
-                    placeholder = { Text("\u4F8B\u5982: 10086") },
+                    label = { Text(stringResource(R.string.sms_sender_label)) },
+                    placeholder = { Text(stringResource(R.string.sms_sender_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -80,8 +82,8 @@ fun SmsScreen() {
                 OutlinedTextField(
                     value = body,
                     onValueChange = { body = it },
-                    label = { Text("\u77ED\u4FE1\u5185\u5BB9") },
-                    placeholder = { Text("\u7C98\u8D34\u77ED\u4FE1\u5168\u6587...") },
+                    label = { Text(stringResource(R.string.sms_body_label)) },
+                    placeholder = { Text(stringResource(R.string.sms_body_placeholder)) },
                     minLines = 4,
                     maxLines = 8,
                     modifier = Modifier.fillMaxWidth(),
@@ -100,7 +102,7 @@ fun SmsScreen() {
                     enabled = body.isNotBlank(),
                     colors = ButtonDefaults.buttonColors(containerColor = GuardRed)
                 ) {
-                    Text("\u5F00\u59CB\u5206\u6790", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.sms_button_analyze), fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -115,9 +117,9 @@ fun SmsScreen() {
 @Composable
 fun SmsResultCard(result: SmsAnalysisResult) {
     val (color, label, emoji) = when (result.riskLevel) {
-        RiskLevel.SAFE -> Triple(GuardGreen, "\u5B89\u5168", "\u2705")
-        RiskLevel.SUSPICIOUS -> Triple(GuardOrange, "\u53EF\u7591", "\u26A0\uFE0F")
-        RiskLevel.DANGEROUS -> Triple(GuardRed, "\u5371\u9669", "\uD83D\uDEA8")
+        RiskLevel.SAFE -> Triple(GuardGreen, stringResource(R.string.risk_level_safe), "\u2705")
+        RiskLevel.SUSPICIOUS -> Triple(GuardOrange, stringResource(R.string.risk_level_suspicious), "\u26A0\uFE0F")
+        RiskLevel.DANGEROUS -> Triple(GuardRed, stringResource(R.string.risk_level_dangerous), "\uD83D\uDEA8")
     }
 
     Card(
@@ -130,9 +132,9 @@ fun SmsResultCard(result: SmsAnalysisResult) {
                 Text(emoji, style = MaterialTheme.typography.headlineLarge)
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text("\u98CE\u9669\u7B49\u7EA7: $label", style = MaterialTheme.typography.titleLarge, color = color, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.sms_risk_level_label, label), style = MaterialTheme.typography.titleLarge, color = color, fontWeight = FontWeight.Bold)
                     if (result.sender.isNotEmpty()) {
-                        Text("\u53D1\u9001\u65B9: ${result.sender}", style = MaterialTheme.typography.bodyMedium, color = OnSurfaceVariantDark)
+                        Text(stringResource(R.string.sms_sender_display, result.sender), style = MaterialTheme.typography.bodyMedium, color = OnSurfaceVariantDark)
                     }
                 }
             }
@@ -145,9 +147,9 @@ fun SmsResultCard(result: SmsAnalysisResult) {
             )
             Spacer(modifier = Modifier.height(12.dp))
             val tip = when (result.riskLevel) {
-                RiskLevel.SAFE -> "\u8BE5\u77ED\u4FE1\u672A\u68C0\u6D4B\u5230\u660E\u663E\u9493\u9C7C\u7279\u5F81\uFF0C\u4F46\u4ECD\u8BF7\u4FDD\u6301\u8B66\u89C9\u3002"
-                RiskLevel.SUSPICIOUS -> "\u8BE5\u77ED\u4FE1\u5305\u542B\u53EF\u7591\u5185\u5BB9\uFF0C\u8BF7\u52FF\u70B9\u51FB\u4EFB\u4F55\u94FE\u63A5\u6216\u56DE\u590D\u4E2A\u4EBA\u4FE1\u606F\u3002"
-                RiskLevel.DANGEROUS -> "\u8BE5\u77ED\u4FE1\u9AD8\u5EA6\u53EF\u7591\uFF01\u53EF\u80FD\u662F\u9493\u9C7C\u6216\u8BC8\u9A97\u4FE1\u606F\uFF0C\u8BF7\u7ACB\u5373\u5220\u9664\uFF0C\u5207\u52FF\u64CD\u4F5C\u3002"
+                RiskLevel.SAFE -> stringResource(R.string.sms_tip_safe)
+                RiskLevel.SUSPICIOUS -> stringResource(R.string.sms_tip_suspicious)
+                RiskLevel.DANGEROUS -> stringResource(R.string.sms_tip_dangerous)
             }
             Text(tip, style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariantDark)
         }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tianshang.guard.R
 import com.tianshang.guard.core.dns.DnsEngine
 import com.tianshang.guard.core.monitor.ScreenShareMonitor
 import com.tianshang.guard.core.optimizer.BatteryOptimizer
@@ -52,8 +53,8 @@ class SettingsViewModel(
     fun exportLogs(context: Context) = viewModelScope.launch {
         val alerts = alertRepository.getAlertsAscSync(1000)
         val content = buildString {
-            appendLine("天殇·破妄 拦截日志")
-            appendLine("导出时间: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}")
+            appendLine(context.getString(R.string.export_log_header))
+            appendLine("${context.getString(R.string.export_log_timestamp)} ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}")
             appendLine("---")
             for (alert in alerts) {
                 appendLine("[${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(alert.timestamp))}] ${alert.type} | domain=${alert.domain ?: ""} url=${alert.url ?: ""}")
@@ -63,7 +64,7 @@ class SettingsViewModel(
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, content)
         }
-        context.startActivity(Intent.createChooser(intent, "导出日志"))
+        context.startActivity(Intent.createChooser(intent, context.getString(R.string.export_share_chooser_title)))
     }
 
     fun clearData() = viewModelScope.launch {

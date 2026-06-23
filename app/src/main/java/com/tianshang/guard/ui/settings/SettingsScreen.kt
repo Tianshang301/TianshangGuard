@@ -38,7 +38,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.tianshang.guard.R
 import com.tianshang.guard.ui.theme.DeepNavy
 import com.tianshang.guard.ui.theme.GuardRed
 import com.tianshang.guard.ui.theme.OnSurfaceDark
@@ -67,12 +69,12 @@ fun SettingsScreen() {
     if (showWhitelistDialog) {
         AlertDialog(
             onDismissRequest = { showWhitelistDialog = false; listDomain = "" },
-            title = { Text("\u6DFB\u52A0\u767D\u540D\u5355") },
+            title = { Text(stringResource(R.string.settings_add_whitelist)) },
             text = {
                 OutlinedTextField(
                     value = listDomain,
                     onValueChange = { listDomain = it },
-                    label = { Text("\u57DF\u540D") },
+                    label = { Text(stringResource(R.string.label_domain)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -81,14 +83,14 @@ fun SettingsScreen() {
                 TextButton(onClick = {
                     if (listDomain.isNotBlank()) {
                         viewModel.addToWhitelist(listDomain.trim())
-                        Toast.makeText(context, "\u5DF2\u6DFB\u52A0: ${listDomain.trim()}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.toast_added_domain, listDomain.trim()), Toast.LENGTH_SHORT).show()
                         showWhitelistDialog = false
                         listDomain = ""
                     }
-                }) { Text("\u786E\u5B9A") }
+                }) { Text(stringResource(R.string.button_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { showWhitelistDialog = false; listDomain = "" }) { Text("\u53D6\u6D88") }
+                TextButton(onClick = { showWhitelistDialog = false; listDomain = "" }) { Text(stringResource(R.string.button_cancel)) }
             }
         )
     }
@@ -96,12 +98,12 @@ fun SettingsScreen() {
     if (showBlacklistDialog) {
         AlertDialog(
             onDismissRequest = { showBlacklistDialog = false; listDomain = "" },
-            title = { Text("\u6DFB\u52A0\u9ED1\u540D\u5355") },
+            title = { Text(stringResource(R.string.settings_add_blacklist)) },
             text = {
                 OutlinedTextField(
                     value = listDomain,
                     onValueChange = { listDomain = it },
-                    label = { Text("\u57DF\u540D") },
+                    label = { Text(stringResource(R.string.label_domain)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -110,14 +112,14 @@ fun SettingsScreen() {
                 TextButton(onClick = {
                     if (listDomain.isNotBlank()) {
                         viewModel.addToBlacklist(listDomain.trim())
-                        Toast.makeText(context, "\u5DF2\u62E6\u622A: ${listDomain.trim()}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.toast_blocked_domain, listDomain.trim()), Toast.LENGTH_SHORT).show()
                         showBlacklistDialog = false
                         listDomain = ""
                     }
-                }) { Text("\u786E\u5B9A") }
+                }) { Text(stringResource(R.string.button_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { showBlacklistDialog = false; listDomain = "" }) { Text("\u53D6\u6D88") }
+                TextButton(onClick = { showBlacklistDialog = false; listDomain = "" }) { Text(stringResource(R.string.button_cancel)) }
             }
         )
     }
@@ -125,16 +127,16 @@ fun SettingsScreen() {
     Column(
         modifier = Modifier.fillMaxSize().background(DeepNavy).padding(16.dp).verticalScroll(rememberScrollState())
     ) {
-        Text("\u8BBE\u7F6E", style = MaterialTheme.typography.headlineLarge, color = OnSurfaceDark)
+        Text(stringResource(R.string.settings_screen_title), style = MaterialTheme.typography.headlineLarge, color = OnSurfaceDark)
         Spacer(modifier = Modifier.height(20.dp))
-        SettingsSection("\u4FDD\u62A4") {
-            SettingsToggle("VPN \u81EA\u542F", "\u5F00\u673A\u81EA\u52A8\u542F\u52A8 VPN \u4FDD\u62A4", checked = vpnAutoStart, onCheckedChange = { viewModel.setVpnAutoStart(it) })
-            SettingsToggle("\u884C\u4E3A\u76D1\u63A7", "\u68C0\u6D4B\u5C4F\u5E55\u5171\u4EAB + \u94F6\u884C\u5E94\u7528\u7EC4\u5408", checked = behaviorMonitor, onCheckedChange = { viewModel.setBehaviorMonitor(it) })
-            SettingsToggle("\u77ED\u4FE1\u76D1\u63A7", "\u5B9E\u65F6\u62E6\u622A\u5E76\u5206\u6790\u53EF\u7591\u77ED\u4FE1", checked = smsMonitor, onCheckedChange = { viewModel.setSmsMonitor(it) })
-            SettingsToggle("\u5F00\u673A\u542F\u52A8", "\u7CFB\u7EDF\u542F\u52A8\u65F6\u81EA\u52A8\u8FD0\u884C", checked = bootStart, onCheckedChange = { viewModel.setBootStart(it) })
+        SettingsSection(stringResource(R.string.settings_section_protection)) {
+            SettingsToggle(stringResource(R.string.settings_vpn_auto_start), stringResource(R.string.settings_vpn_auto_start_desc), checked = vpnAutoStart, onCheckedChange = { viewModel.setVpnAutoStart(it) })
+            SettingsToggle(stringResource(R.string.settings_behavior_monitor), stringResource(R.string.settings_behavior_monitor_desc), checked = behaviorMonitor, onCheckedChange = { viewModel.setBehaviorMonitor(it) })
+            SettingsToggle(stringResource(R.string.settings_sms_monitor), stringResource(R.string.settings_sms_monitor_desc), checked = smsMonitor, onCheckedChange = { viewModel.setSmsMonitor(it) })
+            SettingsToggle(stringResource(R.string.settings_boot_start), stringResource(R.string.settings_boot_start_desc), checked = bootStart, onCheckedChange = { viewModel.setBootStart(it) })
         }
         Spacer(modifier = Modifier.height(12.dp))
-        SettingsSection("\u7535\u6C60\u4F18\u5316\uFF08${brandName}\uFF09") {
+        SettingsSection(stringResource(R.string.settings_battery_optimization_section, brandName)) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -144,43 +146,43 @@ fun SettingsScreen() {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    if (batteryOptimized) "\u7535\u6C60\u4F18\u5316\u5DF2\u5173\u95ED" else "\u7535\u6C60\u4F18\u5316\u672A\u5173\u95ED",
+                    if (batteryOptimized) stringResource(R.string.settings_battery_optimized) else stringResource(R.string.settings_battery_not_optimized),
                     style = MaterialTheme.typography.bodyMedium,
                     color = OnSurfaceDark
                 )
             }
-            SettingsClickable("\u8BBE\u7F6E\u7535\u6C60\u4F18\u5316", "\u5141\u8BB8\u540E\u53F0\u8FD0\u884C\uFF0C\u907F\u514D\u88AB\u7CFB\u7EDF\u6740\u6B7B", onClick = { viewModel.openBatterySettings(context) })
-            SettingsClickable("\u8BBE\u7F6E\u81EA\u542F\u52A8", "\u52A0\u5165\u81EA\u542F\u52A8\u767D\u540D\u5355\uFF0C\u907F\u514D\u542F\u52A8\u88AB\u62E6\u622A", onClick = { viewModel.openAutoStartSettings(context) })
+            SettingsClickable(stringResource(R.string.settings_battery_optimization), stringResource(R.string.settings_battery_optimization_desc), onClick = { viewModel.openBatterySettings(context) })
+            SettingsClickable(stringResource(R.string.settings_auto_start), stringResource(R.string.settings_auto_start_desc), onClick = { viewModel.openAutoStartSettings(context) })
         }
         Spacer(modifier = Modifier.height(12.dp))
-        SettingsSection("\u5217\u8868\u7BA1\u7406") {
-            SettingsClickable("\u767D\u540D\u5355\u7BA1\u7406", "\u7BA1\u7406\u4FE1\u4EFB\u57DF\u540D", onClick = { showWhitelistDialog = true })
-            SettingsClickable("\u9ED1\u540D\u5355\u7BA1\u7406", "\u7BA1\u7406\u62E6\u622A\u57DF\u540D", onClick = { showBlacklistDialog = true })
+        SettingsSection(stringResource(R.string.settings_section_list_management)) {
+            SettingsClickable(stringResource(R.string.settings_whitelist_management), stringResource(R.string.settings_whitelist_management_desc), onClick = { showWhitelistDialog = true })
+            SettingsClickable(stringResource(R.string.settings_blacklist_management), stringResource(R.string.settings_blacklist_management_desc), onClick = { showBlacklistDialog = true })
         }
         Spacer(modifier = Modifier.height(12.dp))
-        SettingsSection("\u9884\u8B66") {
-            SettingsToggle("\u58F0\u97F3\u63D0\u9192", "\u9AD8\u5371\u9884\u8B66\u65F6\u64AD\u653E\u63D0\u793A\u97F3", checked = soundAlert, onCheckedChange = { viewModel.setSoundAlert(it) })
-            SettingsToggle("\u9707\u52A8\u63D0\u9192", "\u9AD8\u5371\u9884\u8B66\u65F6\u9707\u52A8", checked = vibrateAlert, onCheckedChange = { viewModel.setVibrateAlert(it) })
+        SettingsSection(stringResource(R.string.settings_section_alerts)) {
+            SettingsToggle(stringResource(R.string.settings_sound_alert), stringResource(R.string.settings_sound_alert_desc), checked = soundAlert, onCheckedChange = { viewModel.setSoundAlert(it) })
+            SettingsToggle(stringResource(R.string.settings_vibrate_alert), stringResource(R.string.settings_vibrate_alert_desc), checked = vibrateAlert, onCheckedChange = { viewModel.setVibrateAlert(it) })
         }
         Spacer(modifier = Modifier.height(12.dp))
-        SettingsSection("\u6570\u636E") {
-            SettingsClickable("\u5BFC\u51FA\u65E5\u5FD7", "\u5BFC\u51FA\u62E6\u622A\u8BB0\u5F55\u5230\u6587\u4EF6", onClick = { viewModel.exportLogs(context) })
-            SettingsClickable("\u6E05\u9664\u6570\u636E", "\u6E05\u9664\u672C\u5730\u7F13\u5B58\u548C\u65E5\u5FD7", onClick = {
+        SettingsSection(stringResource(R.string.settings_section_data)) {
+            SettingsClickable(stringResource(R.string.settings_export_logs), stringResource(R.string.settings_export_logs_desc), onClick = { viewModel.exportLogs(context) })
+            SettingsClickable(stringResource(R.string.settings_clear_data), stringResource(R.string.settings_clear_data_desc), onClick = {
                 viewModel.clearData()
-                Toast.makeText(context, "\u6570\u636E\u5DF2\u6E05\u9664", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.toast_data_cleared), Toast.LENGTH_SHORT).show()
             })
         }
         Spacer(modifier = Modifier.height(12.dp))
-        SettingsSection("\u5173\u4E8E") {
-            SettingsInfo("\u7248\u672C", "v1.0.0")
-            SettingsInfo("\u5F00\u6E90\u8BB8\u53EF", "MIT")
+        SettingsSection(stringResource(R.string.settings_section_about)) {
+            SettingsInfo(stringResource(R.string.settings_version), "v1.0.0")
+            SettingsInfo(stringResource(R.string.settings_license), "MIT")
         }
         Spacer(modifier = Modifier.height(12.dp))
         Button(onClick = {
             viewModel.checkRuleUpdates()
-            Toast.makeText(context, "\u89C4\u5219\u5DF2\u66F4\u65B0", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.toast_rules_updated), Toast.LENGTH_SHORT).show()
         }, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = GuardRed)) {
-            Text("\u68C0\u67E5\u89C4\u5219\u66F4\u65B0")
+            Text(stringResource(R.string.settings_check_rule_updates))
         }
         Spacer(modifier = Modifier.height(20.dp))
     }

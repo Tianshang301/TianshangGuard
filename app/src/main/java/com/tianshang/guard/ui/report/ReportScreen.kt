@@ -24,7 +24,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.tianshang.guard.R
 import com.tianshang.guard.ui.theme.DeepNavy
 import com.tianshang.guard.ui.theme.GuardRed
 import com.tianshang.guard.ui.theme.OnSurfaceDark
@@ -45,22 +47,22 @@ fun ReportScreen(onBack: () -> Unit = {}) {
     val alertRepository = remember { get<AlertRepository>(AlertRepository::class.java) }
 
     Column(modifier = Modifier.fillMaxSize().background(DeepNavy).padding(16.dp)) {
-        Text("\u2190 \u8FD4\u56DE", style = MaterialTheme.typography.bodyMedium, color = OnSurfaceVariantDark, modifier = Modifier.clickable(onClick = onBack))
+        Text(stringResource(R.string.button_back), style = MaterialTheme.typography.bodyMedium, color = OnSurfaceVariantDark, modifier = Modifier.clickable(onClick = onBack))
         Spacer(modifier = Modifier.height(12.dp))
-        Text("\u4E3E\u62A5", style = MaterialTheme.typography.headlineLarge, color = OnSurfaceDark)
+        Text(stringResource(R.string.report_screen_title), style = MaterialTheme.typography.headlineLarge, color = OnSurfaceDark)
         Spacer(modifier = Modifier.height(8.dp))
-        Text("\u63D0\u4EA4\u53EF\u7591\u57DF\u540D\u5E2E\u52A9\u6211\u4EEC\u5B8C\u5584\u9632\u62A4", style = MaterialTheme.typography.bodyMedium, color = OnSurfaceVariantDark)
+        Text(stringResource(R.string.report_screen_subtitle), style = MaterialTheme.typography.bodyMedium, color = OnSurfaceVariantDark)
         Spacer(modifier = Modifier.height(24.dp))
         OutlinedTextField(
             value = domain, onValueChange = { domain = it },
-            label = { Text("\u57DF\u540D") }, placeholder = { Text("example.com") },
+            label = { Text(stringResource(R.string.label_domain)) }, placeholder = { Text("example.com") },
             singleLine = true, modifier = Modifier.fillMaxWidth(),
             colors = textFieldColors(), shape = RoundedCornerShape(12.dp)
         )
         Spacer(modifier = Modifier.height(12.dp))
         OutlinedTextField(
             value = description, onValueChange = { description = it },
-            label = { Text("\u63CF\u8FF0\uFF08\u53EF\u9009\uFF09") }, placeholder = { Text("\u4E3A\u4EC0\u4E48\u8BA4\u4E3A\u8FD9\u662F\u94F1\u9C7C\u7F51\u7AD9\uFF1F") },
+            label = { Text(stringResource(R.string.report_description_label)) }, placeholder = { Text(stringResource(R.string.report_description_placeholder)) },
             minLines = 4, modifier = Modifier.fillMaxWidth(),
             colors = textFieldColors(), shape = RoundedCornerShape(12.dp)
         )
@@ -68,7 +70,7 @@ fun ReportScreen(onBack: () -> Unit = {}) {
         Button(
             onClick = {
                 if (domain.isBlank()) {
-                    Toast.makeText(context, "\u8BF7\u8F93\u5165\u57DF\u540D", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.toast_enter_domain), Toast.LENGTH_SHORT).show()
                     return@Button
                 }
                 scope.launch {
@@ -79,7 +81,7 @@ fun ReportScreen(onBack: () -> Unit = {}) {
                         riskLevel = "USER_REPORT",
                         userAction = description
                     ))
-                    Toast.makeText(context, "\u4E3E\u62A5\u5DF2\u63D0\u4EA4\uFF0C\u611F\u8C22\u60A8\u7684\u8D21\u732E", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.toast_report_submitted), Toast.LENGTH_SHORT).show()
                     domain = ""
                     description = ""
                 }
@@ -87,9 +89,9 @@ fun ReportScreen(onBack: () -> Unit = {}) {
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = GuardRed)
-        ) { Text("\u63D0\u4EA4\u4E3E\u62A5") }
+        ) { Text(stringResource(R.string.report_button_submit)) }
         Spacer(modifier = Modifier.height(8.dp))
-        Text("\u4E3E\u62A5\u4FE1\u606F\u4EC5\u7528\u4E8E\u6539\u8FDB\u89C4\u5219\u5E93\uFF0C\u4E0D\u4F1A\u6536\u96C6\u60A8\u7684\u4E2A\u4EBA\u4FE1\u606F", style = MaterialTheme.typography.labelSmall, color = OnSurfaceVariantDark)
+        Text(stringResource(R.string.report_privacy_notice), style = MaterialTheme.typography.labelSmall, color = OnSurfaceVariantDark)
     }
 }
 

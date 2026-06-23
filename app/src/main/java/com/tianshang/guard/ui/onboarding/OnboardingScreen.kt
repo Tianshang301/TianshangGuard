@@ -25,10 +25,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tianshang.guard.R
 import com.tianshang.guard.ui.theme.DeepNavy
 import com.tianshang.guard.ui.theme.GuardRed
 import com.tianshang.guard.ui.theme.OnSurfaceDark
@@ -36,17 +38,16 @@ import com.tianshang.guard.ui.theme.OnSurfaceVariantDark
 import com.tianshang.guard.ui.theme.SurfaceVariantDark
 import kotlinx.coroutines.launch
 
-data class OnboardingPage(val emoji: String, val title: String, val description: String)
-
-private val pages = listOf(
-    OnboardingPage("\uD83D\uDEE1\uFE0F", "\u6B22\u8FCE\u4F7F\u7528\u5929\u6B87\u00B7\u7834\u5984", "\u4E00\u6B3E\u5F00\u6E90 Android \u53CD\u8BC8\u5DE5\u5177\uFF0C\u591A\u5C42\u9632\u5FA1\u4FDD\u62A4\u60A8\u7684\u7F51\u7EDC\u5B89\u5168"),
-    OnboardingPage("\uD83C\uDFAF", "DNS \u9632\u62A4", "\u62E6\u622A\u5DF2\u77E5\u94F1\u9C7C\u57DF\u540D\uFF0C\u68C0\u6D4B\u4EFF\u5192\u57DF\u540D\u548C\u540C\u5F62\u5B57\u7B26\u653B\u51FB"),
-    OnboardingPage("\uD83D\uDEE1\uFE0F", "\u884C\u4E3A\u76D1\u63A7", "\u68C0\u6D4B\u5C4F\u5E55\u5171\u4EAB\u4E0E\u94F6\u884C\u5E94\u7528\u7EC4\u5408\uFF0C\u963B\u65AD\u793E\u4F1A\u5DE5\u7A0B\u5B66\u653B\u51FB")
-)
+data class OnboardingPage(val emoji: String, val titleResId: Int, val descriptionResId: Int)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OnboardingScreen(onComplete: () -> Unit) {
+    val pages = listOf(
+        OnboardingPage("\uD83D\uDEE1\uFE0F", R.string.onboarding_welcome_title, R.string.onboarding_welcome_desc),
+        OnboardingPage("\uD83C\uDFAF", R.string.onboarding_dns_title, R.string.onboarding_dns_desc),
+        OnboardingPage("\uD83D\uDEE1\uFE0F", R.string.onboarding_behavior_title, R.string.onboarding_behavior_desc)
+    )
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
 
@@ -56,9 +57,9 @@ fun OnboardingScreen(onComplete: () -> Unit) {
             Column(modifier = Modifier.fillMaxSize().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 Text(page.emoji, fontSize = 72.sp)
                 Spacer(modifier = Modifier.height(32.dp))
-                Text(page.title, style = MaterialTheme.typography.headlineMedium, color = OnSurfaceDark, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                Text(stringResource(page.titleResId), style = MaterialTheme.typography.headlineMedium, color = OnSurfaceDark, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(page.description, style = MaterialTheme.typography.bodyLarge, color = OnSurfaceVariantDark, textAlign = TextAlign.Center)
+                Text(stringResource(page.descriptionResId), style = MaterialTheme.typography.bodyLarge, color = OnSurfaceVariantDark, textAlign = TextAlign.Center)
             }
         }
         Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.Center) {
@@ -77,7 +78,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 24.dp).height(48.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = GuardRed)
-        ) { Text(if (pagerState.currentPage < pages.size - 1) "\u4E0B\u4E00\u6B65" else "\u5F00\u59CB\u4F7F\u7528", fontWeight = FontWeight.Bold) }
+        ) { Text(if (pagerState.currentPage < pages.size - 1) stringResource(R.string.onboarding_button_next) else stringResource(R.string.onboarding_button_start), fontWeight = FontWeight.Bold) }
         Spacer(modifier = Modifier.height(8.dp))
     }
 }

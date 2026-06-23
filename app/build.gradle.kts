@@ -58,6 +58,20 @@ android {
             useLegacyPackaging = true
         }
     }
+
+    flavorDimensions += "language"
+    productFlavors {
+        create("zh") {
+            dimension = "language"
+            applicationIdSuffix = ".zh"
+            versionNameSuffix = "-zh"
+        }
+        create("en") {
+            dimension = "language"
+            applicationIdSuffix = ".en"
+            versionNameSuffix = "-en"
+        }
+    }
 }
 
 dependencies {

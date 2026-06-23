@@ -50,9 +50,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tianshang.guard.R
 import com.tianshang.guard.service.GuardVpnService
 import com.tianshang.guard.ui.onboarding.OnboardingScreen
 import com.tianshang.guard.ui.report.ReportScreen
@@ -132,7 +134,7 @@ fun MainApp() {
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
                     icon = { Text("\uD83C\uDFE0", fontSize = 20.sp) },
-                    label = { Text("主页") },
+                    label = { Text(stringResource(R.string.nav_home)) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = GuardRed, selectedTextColor = GuardRed,
                         unselectedIconColor = OnSurfaceVariantDark, unselectedTextColor = OnSurfaceVariantDark,
@@ -143,7 +145,7 @@ fun MainApp() {
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
                     icon = { Text("\uD83D\uDCE8", fontSize = 20.sp) },
-                    label = { Text("短信") },
+                    label = { Text(stringResource(R.string.nav_sms)) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = GuardRed, selectedTextColor = GuardRed,
                         unselectedIconColor = OnSurfaceVariantDark, unselectedTextColor = OnSurfaceVariantDark,
@@ -154,7 +156,7 @@ fun MainApp() {
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
                     icon = { Text("\uD83D\uDCCA", fontSize = 20.sp) },
-                    label = { Text("统计") },
+                    label = { Text(stringResource(R.string.nav_stats)) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = GuardRed, selectedTextColor = GuardRed,
                         unselectedIconColor = OnSurfaceVariantDark, unselectedTextColor = OnSurfaceVariantDark,
@@ -165,7 +167,7 @@ fun MainApp() {
                     selected = selectedTab == 3,
                     onClick = { selectedTab = 3 },
                     icon = { Text("\u2699\uFE0F", fontSize = 20.sp) },
-                    label = { Text("设置") },
+                    label = { Text(stringResource(R.string.nav_settings)) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = GuardRed, selectedTextColor = GuardRed,
                         unselectedIconColor = OnSurfaceVariantDark, unselectedTextColor = OnSurfaceVariantDark,
@@ -219,9 +221,9 @@ fun HomePage(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        Text("\u5929\u6B87\u00B7\u7834\u5984", style = MaterialTheme.typography.headlineLarge, color = OnSurfaceDark)
+        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineLarge, color = OnSurfaceDark)
         Spacer(modifier = Modifier.height(4.dp))
-        Text("\u6B63\u5728\u4FDD\u62A4\u60A8\u7684\u7F51\u7EDC\u5B89\u5168", style = MaterialTheme.typography.bodyMedium, color = OnSurfaceVariantDark)
+        Text(stringResource(R.string.home_subtitle), style = MaterialTheme.typography.bodyMedium, color = OnSurfaceVariantDark)
         Spacer(modifier = Modifier.height(20.dp))
         VpnStatusCard(
             vpnRunning = vpnRunning,
@@ -264,14 +266,14 @@ fun VpnStatusCard(vpnRunning: Boolean, onToggle: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = if (vpnRunning) "VPN \u4FDD\u62A4\u5DF2\u542F\u7528" else "VPN \u5DF2\u505C\u7528",
+                    text = if (vpnRunning) stringResource(R.string.vpn_status_enabled) else stringResource(R.string.vpn_status_disabled),
                     style = MaterialTheme.typography.titleMedium,
                     color = OnSurfaceDark
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = if (vpnRunning) "\u6B63\u5728\u62E6\u622A\u5DF2\u77E5\u9493\u9C7C\u57DF\u540D\u2026" else "\u70B9\u51FB\u542F\u52A8\u4EE5\u5F00\u59CB\u4FDD\u62A4",
+                text = if (vpnRunning) stringResource(R.string.vpn_blocking_phishing) else stringResource(R.string.vpn_tap_to_start),
                 style = MaterialTheme.typography.bodyMedium,
                 color = OnSurfaceVariantDark
             )
@@ -283,7 +285,7 @@ fun VpnStatusCard(vpnRunning: Boolean, onToggle: () -> Unit) {
                     containerColor = if (vpnRunning) GuardRed else ShieldBlue
                 )
             ) {
-                Text(if (vpnRunning) "\u5173\u95ED VPN" else "\u542F\u52A8 VPN")
+                Text(if (vpnRunning) stringResource(R.string.vpn_button_stop) else stringResource(R.string.vpn_button_start))
             }
         }
     }
@@ -297,15 +299,15 @@ fun StatsOverviewCard(blockedCount: Int, visitedCount: Int, behaviorCount: Int) 
         colors = CardDefaults.cardColors(containerColor = SurfaceDark)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text("\u4ECA\u65E5\u7EDF\u8BA1", style = MaterialTheme.typography.titleMedium, color = OnSurfaceDark)
+            Text(stringResource(R.string.stats_today_title), style = MaterialTheme.typography.titleMedium, color = OnSurfaceDark)
             Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatItem(value = blockedCount.toString(), label = "\u62E6\u622A\u57DF\u540D", color = GuardRed)
-                StatItem(value = visitedCount.toString(), label = "\u8BBF\u95EE\u57DF\u540D", color = ShieldBlue)
-                StatItem(value = behaviorCount.toString(), label = "\u884C\u4E3A\u9884\u8B66", color = GuardOrange)
+                StatItem(value = blockedCount.toString(), label = stringResource(R.string.stats_blocked_domains), color = GuardRed)
+                StatItem(value = visitedCount.toString(), label = stringResource(R.string.stats_visited_domains), color = ShieldBlue)
+                StatItem(value = behaviorCount.toString(), label = stringResource(R.string.stats_behavior_alerts), color = GuardOrange)
             }
         }
     }
@@ -331,9 +333,9 @@ fun QuickActionsRow(onNavigateToStats: () -> Unit, onNavigateToReport: () -> Uni
             modifier = Modifier.fillMaxWidth().padding(20.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            ActionButton(emoji = "\uD83D\uDEAB", label = "\u5FEB\u901F\u4E3E\u62A5", onClick = onNavigateToReport)
-            ActionButton(emoji = "\uD83D\uDCCA", label = "\u67E5\u770B\u7EDF\u8BA1", onClick = onNavigateToStats)
-            ActionButton(emoji = "\uD83D\uDEE1\uFE0F", label = "\u5B8C\u6574\u68C0\u67E5", onClick = onNavigateToReport)
+            ActionButton(emoji = "\uD83D\uDEAB", label = stringResource(R.string.action_quick_report), onClick = onNavigateToReport)
+            ActionButton(emoji = "\uD83D\uDCCA", label = stringResource(R.string.action_view_stats), onClick = onNavigateToStats)
+            ActionButton(emoji = "\uD83D\uDEE1\uFE0F", label = stringResource(R.string.action_full_check), onClick = onNavigateToReport)
         }
     }
 }

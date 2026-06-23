@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Navigation -->
+    <string name="nav_home">主页</string>
+    <string name="nav_sms">短信</string>
+    <string name="nav_stats">统计</string>
+    <string name="nav_settings">设置</string>
+
+    <!-- App Identity -->
+    <string name="app_name">天殇·破妄</string>
+
+    <!-- Common Buttons -->
+    <string name="button_confirm">确定</string>
+    <string name="button_cancel">取消</string>
+    <string name="button_close">关闭</string>
+    <string name="button_return">返回</string>
+    <string name="button_back">← 返回</string>
+    <string name="button_acknowledge">我知道了</string>
+
+    <!-- Common Labels -->
+    <string name="label_domain">域名</string>
+
+    <!-- Home Screen -->
+    <string name="home_subtitle">正在保护您的网络安全</string>
+    <string name="vpn_status_enabled">VPN 保护已启用</string>
+    <string name="vpn_status_disabled">VPN 已停用</string>
+    <string name="vpn_blocking_phishing">正在拦截已知钓鱼域名…</string>
+    <string name="vpn_tap_to_start">点击启动以开始保护</string>
+    <string name="vpn_button_stop">关闭 VPN</string>
+    <string name="vpn_button_start">启动 VPN</string>
+    <string name="stats_today_title">今日统计</string>
+    <string name="stats_blocked_domains">拦截域名</string>
+    <string name="stats_visited_domains">访问域名</string>
+    <string name="stats_behavior_alerts">行为预警</string>
+    <string name="action_quick_report">快速举报</string>
+    <string name="action_view_stats">查看统计</string>
+    <string name="action_full_check">完整检查</string>
+
+    <!-- Alert Screen -->
+    <string name="alert_screen_share_title">高风险操作检测</string>
+    <string name="alert_screen_share_message">检测到屏幕共享软件正在运行\n同时您正在使用银行/支付应用</string>
+    <string name="alert_screen_share_warning">请勿在共享期间输入密码、转账或展示验证码</string>
+    <string name="alert_screen_share_confirm">我知道了，立即处理</string>
+    <string name="alert_phishing_title">网页钓鱼警告</string>
+    <string name="alert_phishing_message">此网页可能是钓鱼网站，请勿输入任何个人信息</string>
+    <string name="alert_suspicious_domain_title">可疑域名</string>
+    <string name="alert_blocked_phishing_domain">已拦截钓鱼域名: %s</string>
+    <string name="alert_sms_phishing_title">短信钓鱼警告</string>
+    <string name="alert_sms_sender_label">发送方: %s</string>
+    <string name="alert_sms_phishing_message">此短信可能包含钓鱼链接或诈骗信息，请勿点击任何链接或回复个人信息</string>
+
+    <!-- Stats Screen -->
+    <string name="stats_screen_title">统计</string>
+    <string name="stats_sms_blocked">短信拦截</string>
+    <string name="stats_recent_alerts">近期预警</string>
+    <string name="stats_no_alerts">暂无预警记录</string>
+    <string name="alert_type_blocked_domain">拦截域名</string>
+    <string name="alert_type_suspicious_domain">可疑域名</string>
+    <string name="alert_type_phishing_page">网页预警</string>
+    <string name="alert_type_behavior_alert">行为预警</string>
+    <string name="alert_type_visited_domain">访问域名</string>
+    <string name="alert_type_sms_phishing">短信钓鱼</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_screen_title">设置</string>
+    <string name="settings_add_whitelist">添加白名单</string>
+    <string name="settings_add_blacklist">添加黑名单</string>
+    <string name="settings_section_protection">保护</string>
+    <string name="settings_vpn_auto_start">VPN 自启</string>
+    <string name="settings_vpn_auto_start_desc">开机自动启动 VPN 保护</string>
+    <string name="settings_behavior_monitor">行为监控</string>
+    <string name="settings_behavior_monitor_desc">检测屏幕共享 + 银行应用组合</string>
+    <string name="settings_sms_monitor">短信监控</string>
+    <string name="settings_sms_monitor_desc">实时拦截并分析可疑短信</string>
+    <string name="settings_boot_start">开机启动</string>
+    <string name="settings_boot_start_desc">系统启动时自动运行</string>
+    <string name="settings_battery_optimization_section">电池优化（%s）</string>
+    <string name="settings_battery_optimized">电池优化已关闭</string>
+    <string name="settings_battery_not_optimized">电池优化未关闭</string>
+    <string name="settings_battery_optimization">设置电池优化</string>
+    <string name="settings_battery_optimization_desc">允许后台运行，避免被系统杀死</string>
+    <string name="settings_auto_start">设置自启动</string>
+    <string name="settings_auto_start_desc">加入自启动白名单，避免启动被拦截</string>
+    <string name="settings_section_list_management">列表管理</string>
+    <string name="settings_whitelist_management">白名单管理</string>
+    <string name="settings_whitelist_management_desc">管理信任域名</string>
+    <string name="settings_blacklist_management">黑名单管理</string>
+    <string name="settings_blacklist_management_desc">管理拦截域名</string>
+    <string name="settings_section_alerts">预警</string>
+    <string name="settings_sound_alert">声音提醒</string>
+    <string name="settings_sound_alert_desc">高危预警时播放提示音</string>
+    <string name="settings_vibrate_alert">震动提醒</string>
+    <string name="settings_vibrate_alert_desc">高危预警时震动</string>
+    <string name="settings_section_data">数据</string>
+    <string name="settings_export_logs">导出日志</string>
+    <string name="settings_export_logs_desc">导出拦截记录到文件</string>
+    <string name="settings_clear_data">清除数据</string>
+    <string name="settings_clear_data_desc">清除本地缓存和日志</string>
+    <string name="settings_section_about">关于</string>
+    <string name="settings_version">版本</string>
+    <string name="settings_license">开源许可</string>
+    <string name="settings_check_rule_updates">检查规则更新</string>
+
+    <!-- Toast Messages -->
+    <string name="toast_added_domain">已添加: %s</string>
+    <string name="toast_blocked_domain">已拦截: %s</string>
+    <string name="toast_data_cleared">数据已清除</string>
+    <string name="toast_rules_updated">规则已更新</string>
+    <string name="toast_enter_domain">请输入域名</string>
+    <string name="toast_report_submitted">举报已提交，感谢您的贡献</string>
+
+    <!-- SMS Screen -->
+    <string name="sms_screen_title">短信检测</string>
+    <string name="sms_screen_subtitle">粘贴可疑短信内容，快速分析风险</string>
+    <string name="sms_sender_label">发送方（可选）</string>
+    <string name="sms_sender_placeholder">例如: 10086</string>
+    <string name="sms_body_label">短信内容</string>
+    <string name="sms_body_placeholder">粘贴短信全文...</string>
+    <string name="sms_button_analyze">开始分析</string>
+    <string name="risk_level_safe">安全</string>
+    <string name="risk_level_suspicious">可疑</string>
+    <string name="risk_level_dangerous">危险</string>
+    <string name="sms_risk_level_label">风险等级: %s</string>
+    <string name="sms_sender_display">发送方: %s</string>
+    <string name="sms_tip_safe">该短信未检测到明显钓鱼特征，但仍请保持警惕。</string>
+    <string name="sms_tip_suspicious">该短信包含可疑内容，请勿点击任何链接或回复个人信息。</string>
+    <string name="sms_tip_dangerous">该短信高度可疑！可能是钓鱼或诈骗信息，请立即删除，切勿操作。</string>
+
+    <!-- Report Screen -->
+    <string name="report_screen_title">举报</string>
+    <string name="report_screen_subtitle">提交可疑域名帮助我们完善防护</string>
+    <string name="report_description_label">描述（可选）</string>
+    <string name="report_description_placeholder">为什么认为这是钓鱼网站？</string>
+    <string name="report_button_submit">提交举报</string>
+    <string name="report_privacy_notice">举报信息仅用于改进规则库，不会收集您的个人信息</string>
+
+    <!-- Onboarding Screen -->
+    <string name="onboarding_welcome_title">欢迎使用天殇·破妄</string>
+    <string name="onboarding_welcome_desc">一款开源 Android 反诈工具，多层防御保护您的网络安全</string>
+    <string name="onboarding_dns_title">DNS 防护</string>
+    <string name="onboarding_dns_desc">拦截已知钓鱼域名，检测仿冒域名和同形字符攻击</string>
+    <string name="onboarding_behavior_title">行为监控</string>
+    <string name="onboarding_behavior_desc">检测屏幕共享与银行应用组合，阻断社会工程学攻击</string>
+    <string name="onboarding_button_next">下一步</string>
+    <string name="onboarding_button_start">开始使用</string>
+
+    <!-- Export Log -->
+    <string name="export_log_header">天殇·破妄 拦截日志</string>
+    <string name="export_log_timestamp">导出时间:</string>
+    <string name="export_share_chooser_title">导出日志</string>
+</resources>

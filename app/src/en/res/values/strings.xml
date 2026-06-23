@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_sms">SMS</string>
+    <string name="nav_stats">Stats</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- App Identity -->
+    <string name="app_name">Tianshang Powang</string>
+
+    <!-- Common Buttons -->
+    <string name="button_confirm">OK</string>
+    <string name="button_cancel">Cancel</string>
+    <string name="button_close">Close</string>
+    <string name="button_return">Return</string>
+    <string name="button_back">Back</string>
+    <string name="button_acknowledge">I understand</string>
+
+    <!-- Common Labels -->
+    <string name="label_domain">Domain</string>
+
+    <!-- Home Screen -->
+    <string name="home_subtitle">Protecting your network security</string>
+    <string name="vpn_status_enabled">VPN protection enabled</string>
+    <string name="vpn_status_disabled">VPN disabled</string>
+    <string name="vpn_blocking_phishing">Blocking known phishing domains...</string>
+    <string name="vpn_tap_to_start">Tap to start protection</string>
+    <string name="vpn_button_stop">Stop VPN</string>
+    <string name="vpn_button_start">Start VPN</string>
+    <string name="stats_today_title">Today\'s Statistics</string>
+    <string name="stats_blocked_domains">Blocked Domains</string>
+    <string name="stats_visited_domains">Visited Domains</string>
+    <string name="stats_behavior_alerts">Behavior Alerts</string>
+    <string name="action_quick_report">Quick Report</string>
+    <string name="action_view_stats">View Stats</string>
+    <string name="action_full_check">Full Check</string>
+
+    <!-- Alert Screen -->
+    <string name="alert_screen_share_title">High-Risk Operation Detected</string>
+    <string name="alert_screen_share_message">Screen sharing software detected running while you are using a banking/payment app</string>
+    <string name="alert_screen_share_warning">Do not enter passwords, transfer money, or display verification codes during sharing</string>
+    <string name="alert_screen_share_confirm">I understand, handling now</string>
+    <string name="alert_phishing_title">Phishing Page Warning</string>
+    <string name="alert_phishing_message">This webpage may be a phishing site. Do not enter any personal information</string>
+    <string name="alert_suspicious_domain_title">Suspicious Domain</string>
+    <string name="alert_blocked_phishing_domain">Phishing domain blocked: %s</string>
+    <string name="alert_sms_phishing_title">SMS Phishing Warning</string>
+    <string name="alert_sms_sender_label">Sender: %s</string>
+    <string name="alert_sms_phishing_message">This SMS may contain phishing links or scam messages. Do not click any links or reply with personal information</string>
+
+    <!-- Stats Screen -->
+    <string name="stats_screen_title">Statistics</string>
+    <string name="stats_sms_blocked">SMS Blocked</string>
+    <string name="stats_recent_alerts">Recent Alerts</string>
+    <string name="stats_no_alerts">No alerts recorded</string>
+    <string name="alert_type_blocked_domain">Blocked Domain</string>
+    <string name="alert_type_suspicious_domain">Suspicious Domain</string>
+    <string name="alert_type_phishing_page">Page Warning</string>
+    <string name="alert_type_behavior_alert">Behavior Alert</string>
+    <string name="alert_type_visited_domain">Visited Domain</string>
+    <string name="alert_type_sms_phishing">SMS Phishing</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_screen_title">Settings</string>
+    <string name="settings_add_whitelist">Add to Whitelist</string>
+    <string name="settings_add_blacklist">Add to Blacklist</string>
+    <string name="settings_section_protection">Protection</string>
+    <string name="settings_vpn_auto_start">VPN Auto-Start</string>
+    <string name="settings_vpn_auto_start_desc">Automatically start VPN protection on boot</string>
+    <string name="settings_behavior_monitor">Behavior Monitor</string>
+    <string name="settings_behavior_monitor_desc">Detect screen sharing + banking app combinations</string>
+    <string name="settings_sms_monitor">SMS Monitor</string>
+    <string name="settings_sms_monitor_desc">Intercept and analyze suspicious SMS in real-time</string>
+    <string name="settings_boot_start">Boot Start</string>
+    <string name="settings_boot_start_desc">Run automatically on system boot</string>
+    <string name="settings_battery_optimization_section">Battery Optimization (%s)</string>
+    <string name="settings_battery_optimized">Battery optimization disabled</string>
+    <string name="settings_battery_not_optimized">Battery optimization not disabled</string>
+    <string name="settings_battery_optimization">Set Battery Optimization</string>
+    <string name="settings_battery_optimization_desc">Allow background running to prevent being killed by system</string>
+    <string name="settings_auto_start">Set Auto-Start</string>
+    <string name="settings_auto_start_desc">Add to auto-start whitelist to prevent startup being blocked</string>
+    <string name="settings_section_list_management">List Management</string>
+    <string name="settings_whitelist_management">Whitelist Management</string>
+    <string name="settings_whitelist_management_desc">Manage trusted domains</string>
+    <string name="settings_blacklist_management">Blacklist Management</string>
+    <string name="settings_blacklist_management_desc">Manage blocked domains</string>
+    <string name="settings_section_alerts">Alerts</string>
+    <string name="settings_sound_alert">Sound Alert</string>
+    <string name="settings_sound_alert_desc">Play alert sound on high-risk warnings</string>
+    <string name="settings_vibrate_alert">Vibration Alert</string>
+    <string name="settings_vibrate_alert_desc">Vibrate on high-risk warnings</string>
+    <string name="settings_section_data">Data</string>
+    <string name="settings_export_logs">Export Logs</string>
+    <string name="settings_export_logs_desc">Export blocking records to file</string>
+    <string name="settings_clear_data">Clear Data</string>
+    <string name="settings_clear_data_desc">Clear local cache and logs</string>
+    <string name="settings_section_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_license">Open Source License</string>
+    <string name="settings_check_rule_updates">Check Rule Updates</string>
+
+    <!-- Toast Messages -->
+    <string name="toast_added_domain">Added: %s</string>
+    <string name="toast_blocked_domain">Blocked: %s</string>
+    <string name="toast_data_cleared">Data cleared</string>
+    <string name="toast_rules_updated">Rules updated</string>
+    <string name="toast_enter_domain">Please enter a domain</string>
+    <string name="toast_report_submitted">Report submitted. Thank you for your contribution</string>
+
+    <!-- SMS Screen -->
+    <string name="sms_screen_title">SMS Detection</string>
+    <string name="sms_screen_subtitle">Paste suspicious SMS content for quick risk analysis</string>
+    <string name="sms_sender_label">Sender (Optional)</string>
+    <string name="sms_sender_placeholder">e.g. 10086</string>
+    <string name="sms_body_label">SMS Content</string>
+    <string name="sms_body_placeholder">Paste full SMS text...</string>
+    <string name="sms_button_analyze">Start Analysis</string>
+    <string name="risk_level_safe">Safe</string>
+    <string name="risk_level_suspicious">Suspicious</string>
+    <string name="risk_level_dangerous">Dangerous</string>
+    <string name="sms_risk_level_label">Risk Level: %s</string>
+    <string name="sms_sender_display">Sender: %s</string>
+    <string name="sms_tip_safe">No obvious phishing characteristics detected, but please remain vigilant.</string>
+    <string name="sms_tip_suspicious">This SMS contains suspicious content. Do not click any links or reply with personal information.</string>
+    <string name="sms_tip_dangerous">This SMS is highly suspicious! It may be phishing or a scam. Delete it immediately and do not interact with it.</string>
+
+    <!-- Report Screen -->
+    <string name="report_screen_title">Report</string>
+    <string name="report_screen_subtitle">Submit suspicious domains to help us improve protection</string>
+    <string name="report_description_label">Description (Optional)</string>
+    <string name="report_description_placeholder">Why do you think this is a phishing website?</string>
+    <string name="report_button_submit">Submit Report</string>
+    <string name="report_privacy_notice">Report information is only used to improve the rule database and will not collect your personal information</string>
+
+    <!-- Onboarding Screen -->
+    <string name="onboarding_welcome_title">Welcome to Tianshang Powang</string>
+    <string name="onboarding_welcome_desc">An open-source Android anti-fraud tool with multi-layer protection for your network security</string>
+    <string name="onboarding_dns_title">DNS Protection</string>
+    <string name="onboarding_dns_desc">Block known phishing domains, detect spoofed domains and homograph attacks</string>
+    <string name="onboarding_behavior_title">Behavior Monitoring</string>
+    <string name="onboarding_behavior_desc">Detect screen sharing + banking app combinations, block social engineering attacks</string>
+    <string name="onboarding_button_next">Next</string>
+    <string name="onboarding_button_start">Get Started</string>
+
+    <!-- Export Log -->
+    <string name="export_log_header">Tianshang Powang Blocking Log</string>
+    <string name="export_log_timestamp">Export Time:</string>
+    <string name="export_share_chooser_title">Export Logs</string>
+</resources>
