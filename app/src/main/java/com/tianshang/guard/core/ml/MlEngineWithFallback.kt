@@ -39,7 +39,34 @@ class MlEngineWithFallback(
     }
 
     override fun analyzeSms(text: String): RiskLevel {
-        return analyzeWithFallback(text, ModelType.CHINESE)
+        val cacheKey = "SMS:$text"
+        resultCache[cacheKey]?.let { return it }
+
+        val result = when {
+            states.any { it.value is MlState.Ready } -> runSmsWithTimeout(text)
+            else -> fallbackEngine.analyzeSms(text)
+        }
+
+        resultCache[cacheKey] = result
+        return result
+    }
+
+    private fun runSmsWithTimeout(text: String): RiskLevel {
+        return try {
+            val startTime = System.currentTimeMillis()
+            val result = runBlocking {
+                withTimeout(inferenceTimeout) {
+                    onnxEngine.analyzeSms(text)
+                }
+            }
+            tracer.recordInferenceTime(System.currentTimeMillis() - startTime)
+            result
+        } catch (e: TimeoutCancellationException) {
+            tracer.recordTimeout()
+            fallbackEngine.analyzeSms(text)
+        } catch (e: Exception) {
+            fallbackEngine.analyzeSms(text)
+        }
     }
 
     private fun analyzeWithFallback(text: String, type: ModelType): RiskLevel {

@@ -71,6 +71,11 @@ android {
             applicationIdSuffix = ".en"
             versionNameSuffix = "-en"
         }
+        create("ja") {
+            dimension = "language"
+            applicationIdSuffix = ".ja"
+            versionNameSuffix = "-ja"
+        }
     }
 }
 

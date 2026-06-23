@@ -18,6 +18,16 @@ class RuleBasedEngine : MlEngine {
         "领取补贴", "退税通知", "航班取消", "学费退费"
     )
 
+    private val smsPhishingKeywordsJapanese = listOf(
+        "口座", "振込", "詐欺", "不正アクセス", "本人確認",
+        "パスワード", "ワンタイムパスワード", "クリック",
+        "緊急", "アカウント停止", "補償", "還元", "当選",
+        "未納", "督促", "税務署", "警察", "裁判所",
+        "SMS認証", "ログイン", "退会手続き", "配送業者",
+        "تصر明", "تصر明手続き", "تصر明金", "تصر明料",
+        "当選金", "当選通知", "تصر明完了", "تصر明確認"
+    )
+
     override fun analyzeWebPage(text: String): RiskLevel {
         val matchCount = phishingKeywords.count { text.contains(it) }
         return when {
@@ -32,7 +42,12 @@ class RuleBasedEngine : MlEngine {
     }
 
     override fun analyzeSms(text: String): RiskLevel {
-        val matchCount = smsPhishingKeywords.count { text.contains(it) }
+        val hasHiragana = text.any { it in '\u3040'..'\u309F' }
+        val hasKatakana = text.any { it in '\u30A0'..'\u30FF' }
+        val isJapanese = hasHiragana || hasKatakana
+
+        val keywords = if (isJapanese) smsPhishingKeywordsJapanese else smsPhishingKeywords
+        val matchCount = keywords.count { text.contains(it) }
         return when {
             matchCount >= 3 -> RiskLevel.DANGEROUS
             matchCount >= 1 -> RiskLevel.SUSPICIOUS

@@ -135,7 +135,7 @@
     <string name="report_privacy_notice">Report information is only used to improve the rule database and will not collect your personal information</string>
 
     <!-- Onboarding Screen -->
-    <string name="onboarding_welcome_title">Welcome to Tianshang Powang</string>
+    <string name="onboarding_welcome_title">Welcome to TianshangGuard</string>
     <string name="onboarding_welcome_desc">An open-source Android anti-fraud tool with multi-layer protection for your network security</string>
     <string name="onboarding_dns_title">DNS Protection</string>
     <string name="onboarding_dns_desc">Block known phishing domains, detect spoofed domains and homograph attacks</string>
@@ -145,7 +145,7 @@
     <string name="onboarding_button_start">Get Started</string>
 
     <!-- Export Log -->
-    <string name="export_log_header">Tianshang Powang Blocking Log</string>
+    <string name="export_log_header">TianshangGuard Blocking Log</string>
     <string name="export_log_timestamp">Export Time:</string>
     <string name="export_share_chooser_title">Export Logs</string>
 </resources>
