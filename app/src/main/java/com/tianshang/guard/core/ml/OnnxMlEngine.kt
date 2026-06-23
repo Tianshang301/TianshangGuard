@@ -3,6 +3,7 @@ package com.tianshang.guard.core.ml
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import ai.onnxruntime.OnnxTensor
+import java.util.regex.Pattern
 
 class BertTokenizer {
 
@@ -22,6 +23,7 @@ class OnnxMlEngine : MlEngine {
 
     private val sessions = mutableMapOf<ModelType, OrtSession>()
     private val tokenizer = BertTokenizer()
+    private val urlPattern = Pattern.compile("https?://[^\\s]+")
 
     override fun loadModel(modelPath: String, type: ModelType) {
         val env = OrtEnvironment.getEnvironment()
@@ -46,6 +48,18 @@ class OnnxMlEngine : MlEngine {
         return RiskLevel.fromScore(score)
     }
 
+    fun analyzeWithModelScore(text: String, type: ModelType): Float {
+        val session = sessions[type] ?: return 0f
+        val inputIds = tokenizer.encode(text, maxLength = 512)
+        val inputTensor = OnnxTensor.createTensor(
+            OrtEnvironment.getEnvironment(),
+            arrayOf(inputIds)
+        )
+
+        val outputs = session.run(mapOf("input" to inputTensor))
+        return (outputs?.get(0)?.value as? FloatArray)?.firstOrNull() ?: 0f
+    }
+
     override fun analyzeWebPage(text: String): RiskLevel {
         return analyzeWithModel(text, ModelType.URL)
     }
@@ -56,7 +70,32 @@ class OnnxMlEngine : MlEngine {
     }
 
     override fun analyzeSms(text: String): RiskLevel {
-        return analyzeWithModel(text, ModelType.CHINESE)
+        val score = analyzeSmsScore(text)
+        return RiskLevel.fromScore(score)
+    }
+
+    fun analyzeSmsScore(text: String): Float {
+        // 1. Detect language and get text score
+        val isChinese = text.any { it in '\u4E00'..'\u9FFF' }
+        val textModelType = if (isChinese) ModelType.CHINESE else ModelType.ENGLISH
+        val textScore = analyzeWithModelScore(text, textModelType)
+
+        // 2. Extract URL from text
+        val url = extractUrl(text)
+
+        // 3. If URL exists, also analyze with URL model
+        if (url != null) {
+            val urlScore = analyzeWithModelScore(url, ModelType.URL)
+            // Return the maximum of text score and URL score
+            return maxOf(textScore, urlScore)
+        }
+
+        return textScore
+    }
+
+    private fun extractUrl(text: String): String? {
+        val matcher = urlPattern.matcher(text)
+        return if (matcher.find()) matcher.group() else null
     }
 
     private fun extractDomainFeatures(domain: String): FloatArray {

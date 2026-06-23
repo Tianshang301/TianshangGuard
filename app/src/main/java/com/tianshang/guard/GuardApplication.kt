@@ -47,6 +47,14 @@ class GuardApplication : Application() {
                 }
             }
             mlEngine.loadModel(chineseModelFile.absolutePath, ModelType.CHINESE)
+
+            val englishModelFile = File(cacheDir, "english_phishing.onnx")
+            if (!englishModelFile.exists()) {
+                assets.open("model/english_phishing.onnx").use { input ->
+                    englishModelFile.outputStream().use { output -> input.copyTo(output) }
+                }
+            }
+            mlEngine.loadModel(englishModelFile.absolutePath, ModelType.ENGLISH)
         } catch (e: Exception) {
             android.util.Log.e("GuardApp", "Failed to load ONNX model", e)
         }

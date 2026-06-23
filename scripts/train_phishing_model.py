@@ -45,6 +45,14 @@ class Config:
             self.batch_size = 128
             self.output_subdir = "url"
             self.onnx_name = "url_phishing.onnx"
+        elif mode == "english":
+            self.d_model = 64
+            self.n_heads = 2
+            self.n_layers = 2
+            self.d_ff = 128
+            self.batch_size = 128
+            self.output_subdir = "english"
+            self.onnx_name = "english_phishing.onnx"
         else:  # chinese
             self.d_model = 128
             self.n_heads = 4
@@ -516,8 +524,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Train phishing detection model")
     parser.add_argument("--fresh", action="store_true",
                         help="Ignore existing checkpoint and train from scratch")
-    parser.add_argument("--mode", choices=["url", "chinese"], default="url",
-                        help="Model mode: url (small, PhiUSIIL) or chinese (full, ChiFraud+synthetic)")
+    parser.add_argument("--mode", choices=["url", "chinese", "english"], default="url",
+                        help="Model mode: url (small, PhiUSIIL), chinese (full, ChiFraud+synthetic), or english (SMS phishing)")
     return parser.parse_args()
 
 # ── URL Data Augmentation ─────────────────────────────────────
@@ -716,6 +724,51 @@ def train(fresh=False, mode="url"):
             print("CSV not found, generating synthetic dataset...")
             train_dataset = PhishingDataset(20000, max_seq_len=config.max_seq_len)
             val_dataset = PhishingDataset(2000, max_seq_len=config.max_seq_len)
+
+    elif mode == "english":
+        csv_path = os.path.join(base_path, "sms_spam", "english_sms_dataset.csv")
+        if os.path.exists(csv_path):
+            print(f"[English Mode] Loading SMS dataset from {csv_path}...")
+            import pandas as pd
+            df_all = pd.read_csv(csv_path)
+            df_all = df_all.dropna(subset=["text"])
+            df_all["text"] = df_all["text"].astype(str)
+            df_all["label"] = df_all["label"].astype(float)
+
+            # Balance: downsample majority class to match minority
+            phishing = df_all[df_all["label"] == 1.0]
+            legit = df_all[df_all["label"] == 0.0]
+            n = min(len(phishing), len(legit))
+            df_balanced = pd.concat([
+                phishing.sample(n, random_state=42),
+                legit.sample(n, random_state=42)
+            ])
+            df_balanced = df_balanced.sample(frac=1, random_state=42).reset_index(drop=True)
+
+            split_idx = int(len(df_balanced) * 0.9)
+            train_df = df_balanced.iloc[:split_idx]
+            val_df = df_balanced.iloc[split_idx:]
+
+            print(f"  Balanced dataset: {len(df_balanced)} samples ({len(train_df)} train, {len(val_df)} val)")
+
+            class DataFrameDataset(Dataset):
+                def __init__(self, df, max_seq_len):
+                    self.texts = df["text"].tolist()
+                    self.labels = df["label"].astype(float).tolist()
+                    self.max_seq_len = max_seq_len
+                def __len__(self):
+                    return len(self.texts)
+                def __getitem__(self, idx):
+                    tokens = tokenizer.encode(self.texts[idx], self.max_seq_len)
+                    return torch.tensor(tokens, dtype=torch.long), torch.tensor(self.labels[idx], dtype=torch.float)
+
+            train_dataset = DataFrameDataset(train_df, config.max_seq_len)
+            val_dataset = DataFrameDataset(val_df, config.max_seq_len)
+            print(f"  Using English SMS: {len(train_dataset)} train, {len(val_dataset)} val")
+        else:
+            print(f"ERROR: English SMS dataset not found at {csv_path}")
+            print("Run merge_english_sms.py first.")
+            return
 
     else:  # chinese
         csv_path = os.path.join(base_path, "combined_dataset.csv")
@@ -949,6 +1002,23 @@ def test_onnx_inference(onnx_path, mode="url", max_seq_len=512):
             ("https://stackoverflow.com/questions/12345 [SEP] Python list comprehension example", False),
             ("https://github.com/torvalds/linux [SEP] Linux kernel source tree", False),
             ("https://www.alipay.com/ [SEP] 支付宝 - 全球领先的独立第三方支付平台", False),
+        ]
+    elif mode == "english":
+        test_texts = [
+            # Classic phishing with suspicious URLs (should be phishing)
+            ("Your account has been locked. Click here to verify your identity: https://bit.ly/12345", True),
+            ("Congratulations! You have won a $1000 gift card from Amazon! Claim here: https://rb.gy/12345", True),
+            ("URGENT: Your bank account is suspended. Call this number now to restore access.", True),
+            ("ALERT: Your Chase account has been suspended. Verify now: https://goo.gl/12345", True),
+            ("Your FedEx package cannot be delivered. Update your address: https://tinyurl.com/12345", True),
+            ("FREE: Walmart gift card worth $500! Limited time. Claim: https://short.link/abc123", True),
+            # Legitimate messages (should be safe)
+            ("Your FedEx package has been delivered to your front door. Track: ABC123XYZ.", False),
+            ("Hey, are you free for dinner tonight? I found a great new restaurant.", False),
+            ("Your verification code is 847291. Do not share this code with anyone.", False),
+            ("Reminder: Your appointment with Dr. Smith is tomorrow at 3pm.", False),
+            ("Congratulations on your graduation! So proud of you!", False),
+            ("Click here to join the Zoom meeting for today's call.", False),
         ]
     else:
         test_texts = [
