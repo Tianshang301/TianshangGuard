@@ -1,0 +1,71 @@
+﻿*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+/app/build
+.venv/
+venv/
+env/
+.env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Training outputs
+scripts/output/
+scripts/validation_results/
+scripts/fitting_report.json
+
+# Raw datasets (large, not committed)
+scripts/raw_data/
+scripts/chifraud_data/
+
+# Temporary analysis scripts
+scripts/tmp_*.py
+
+# LaTeX build artifacts
+docs/*.aux
+docs/*.log
+docs/*.out
+docs/*.toc
+docs/*.lof
+docs/*.lot
+docs/*.synctex.gz
+docs/*.fdb_latexmk
+docs/*.fls
+docs/*.bbl
+docs/*.blg
+docs/*.bcf
+docs/*.run.xml
+
+# Generated PDF reports
+docs/*.pdf
+
+# VS Code
+.vscode/
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Project auxiliary files (all .md except README.md)
+*.md
+!README.md
+PLAN.md
+screenshot.png
+guard_b64.txt
+guard2_b64.txt
+guard_check.db
+guard_decoded.db
+guard2_decoded.db
+hs_err_pid*.log
+replay_pid*.log

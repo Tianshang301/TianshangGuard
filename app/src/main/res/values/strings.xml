@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">天殇·破妄</string>
+    <string name="vpn_channel_name">天殇·破妄防护服务</string>
+    <string name="vpn_channel_description">持续保护您免受网络诈骗</string>
+    <string name="vpn_notification_title">天殇·破妄运行中</string>
+    <string name="vpn_notification_text">正在拦截已知钓鱼域名…</string>
+</resources>
