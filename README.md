@@ -9,7 +9,7 @@
 
 Open-source Android anti-fraud tool with a layered defense architecture. **All analysis runs on-device — zero data upload.**
 
-[中文文档](README.zh-CN.md)
+[中文文档](readme/README.zh-CN.md)
 
 ---
 
