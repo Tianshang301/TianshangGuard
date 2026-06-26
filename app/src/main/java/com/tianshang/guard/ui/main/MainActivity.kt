@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tianshang.guard.R
 import com.tianshang.guard.service.GuardVpnService
+import com.tianshang.guard.ui.DisclaimerText
 import com.tianshang.guard.ui.onboarding.OnboardingScreen
 import com.tianshang.guard.ui.report.ReportScreen
 import com.tianshang.guard.ui.settings.SettingsScreen
@@ -202,9 +203,9 @@ fun HomePage(
 ) {
     val context = LocalContext.current
     val vpnRunning by viewModel.vpnRunning.collectAsState()
-    val blockedCount by viewModel.blockedCount.collectAsState()
-    val visitedCount by viewModel.visitedCount.collectAsState()
-    val behaviorCount by viewModel.behaviorCount.collectAsState()
+    val blockedCount by viewModel.blockedToday.collectAsState()
+    val visitedCount by viewModel.visitedToday.collectAsState()
+    val behaviorCount by viewModel.behaviorToday.collectAsState()
 
     val vpnLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -244,6 +245,7 @@ fun HomePage(
         )
         Spacer(modifier = Modifier.height(16.dp))
         StatsOverviewCard(blockedCount = blockedCount, visitedCount = visitedCount, behaviorCount = behaviorCount)
+        DisclaimerText()
         Spacer(modifier = Modifier.height(16.dp))
         QuickActionsRow(onNavigateToStats = onNavigateToStats, onNavigateToReport = onNavigateToReport)
     }

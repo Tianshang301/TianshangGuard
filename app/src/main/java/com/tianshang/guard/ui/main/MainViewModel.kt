@@ -6,13 +6,16 @@ import com.tianshang.guard.core.dns.DnsEngine
 import com.tianshang.guard.core.monitor.ScreenShareMonitor
 import com.tianshang.guard.data.local.GuardPreferences
 import com.tianshang.guard.data.repository.AlertRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 class MainViewModel(
     private val dnsEngine: DnsEngine,
@@ -24,17 +27,38 @@ class MainViewModel(
     private val _vpnRunning = MutableStateFlow(false)
     val vpnRunning: StateFlow<Boolean> = _vpnRunning.asStateFlow()
 
-    val blockedCount: StateFlow<Int> = combine(
-        alertRepository.getCountByTypeFlow("BLACKLIST_BLOCKED"),
-        alertRepository.getCountByTypeFlow("SUSPICIOUS_DOMAIN")
-    ) { blocked, suspicious -> blocked + suspicious }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    private val _refreshTrigger = MutableStateFlow(0L)
+    private var lastDate = LocalDate.MIN
 
-    val visitedCount: StateFlow<Int> = alertRepository.getCountByTypeFlow("VISITED")
-        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    init {
+        viewModelScope.launch {
+            lastDate = LocalDate.now()
+            while (true) {
+                delay(60_000L)
+                val today = LocalDate.now()
+                if (today != lastDate) {
+                    lastDate = today
+                    _refreshTrigger.value = System.currentTimeMillis()
+                }
+            }
+        }
+    }
 
-    val behaviorCount: StateFlow<Int> = alertRepository.getCountByTypeFlow("SCREEN_SHARE")
-        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    val blockedToday: StateFlow<Int> = _refreshTrigger.flatMapLatest {
+        val since = AlertRepository.todayStartMs()
+        combine(
+            alertRepository.getCountByTypeSinceFlow("BLACKLIST_BLOCKED", since),
+            alertRepository.getCountByTypeSinceFlow("SUSPICIOUS_DOMAIN", since)
+        ) { blocked, suspicious -> blocked + suspicious }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val visitedToday: StateFlow<Int> = _refreshTrigger.flatMapLatest {
+        alertRepository.getCountByTypeSinceFlow("VISITED", AlertRepository.todayStartMs())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val behaviorToday: StateFlow<Int> = _refreshTrigger.flatMapLatest {
+        alertRepository.getCountByTypeSinceFlow("SCREEN_SHARE", AlertRepository.todayStartMs())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     private val _monitoring = MutableStateFlow(false)
     val monitoring: StateFlow<Boolean> = _monitoring.asStateFlow()

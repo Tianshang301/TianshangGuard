@@ -22,6 +22,12 @@ interface AlertDao {
     @Query("SELECT COUNT(*) FROM alerts WHERE type = :type")
     fun getCountByTypeFlow(type: String): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM alerts WHERE type = :type AND timestamp >= :since")
+    fun getCountByTypeSince(type: String, since: Long): Int
+
+    @Query("SELECT COUNT(*) FROM alerts WHERE type = :type AND timestamp >= :since")
+    fun getCountByTypeSinceFlow(type: String, since: Long): Flow<Int>
+
     @Query("SELECT * FROM alerts ORDER BY timestamp DESC LIMIT :limit")
     fun getRecentAlertsSync(limit: Int): List<AlertEntity>
 

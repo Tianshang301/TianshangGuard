@@ -5,10 +5,48 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <group
-        android:translateX="22"
-        android:translateY="22">
+        android:translateX="18"
+        android:translateY="18">
+
+        <!-- Shield body (subtle fill) -->
         <path
             android:fillColor="#FFFFFF"
-            android:pathData="M32,8C18.7,8 8,18.7 8,32s10.7,24 24,24 24,-10.7 24,-24S45.3,8 32,8zM32,12c11,0 20,9 20,20s-9,20 -20,20 -20,-9 -20,-20 9,-20 20,-20zM28,22v20l12,-10z" />
+            android:fillAlpha="0.12"
+            android:pathData="M36,6 L54,14 L54,34 Q54,50 36,60 Q18,50 18,34 L18,14 Z" />
+
+        <!-- Shield outline -->
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="2.5"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M36,6 L54,14 L54,34 Q54,50 36,60 Q18,50 18,34 L18,14 Z" />
+
+        <!-- Sword blade -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M34.5,12 h3 v32 h-3 z" />
+
+        <!-- Sword blade tip -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M34.5,44 L37.5,44 L36,50 Z" />
+
+        <!-- Sword crossguard -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M27,16 h18 v2.5 h-18 z" />
+
+        <!-- Sword grip -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M34.5,18.5 h3 v10 h-3 z" />
+
+        <!-- Sword pommel -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M36,31 a2.5,2.5 0 1,0 0.01,0 Z" />
+
     </group>
 </vector>
