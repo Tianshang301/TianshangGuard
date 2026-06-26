@@ -49,7 +49,9 @@ data class FeedbackEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val timestamp: Long = System.currentTimeMillis(),
     val textHash: String,
+    val tokens: String,
     val modelScore: Float,
     val label: FeedbackLabel,
-    val source: String
+    val source: String,
+    val features: String? = null
 )

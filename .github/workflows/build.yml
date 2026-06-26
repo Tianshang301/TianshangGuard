@@ -1,0 +1,50 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Zh Release
+        run: ./gradlew assembleZhRelease
+
+      - name: Build En Release
+        run: ./gradlew assembleEnRelease
+
+      - name: Build Unified Release
+        run: ./gradlew assembleUnifiedRelease
+
+      - name: Upload Zh APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-zh-release
+          path: app/build/outputs/apk/zh/release/app-zh-release.apk
+
+      - name: Upload En APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-en-release
+          path: app/build/outputs/apk/en/release/app-en-release.apk
+
+      - name: Upload Unified APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-unified-release
+          path: app/build/outputs/apk/unified/release/app-unified-release.apk
