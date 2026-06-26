@@ -32,7 +32,7 @@ class GuardApplication : Application() {
         try {
             val mlEngine: MlEngine = get(MlEngine::class.java)
 
-            // Japanese version: load all models
+            // Japanese version: load URL, Japanese, and SMS models
             val urlModelFile = File(cacheDir, "url_phishing.onnx")
             if (!urlModelFile.exists()) {
                 assets.open("model/url_phishing.onnx").use { input ->
@@ -40,22 +40,6 @@ class GuardApplication : Application() {
                 }
             }
             mlEngine.loadModel(urlModelFile.absolutePath, ModelType.URL)
-
-            val chineseModelFile = File(cacheDir, "chinese_phishing.onnx")
-            if (!chineseModelFile.exists()) {
-                assets.open("model/chinese_phishing.onnx").use { input ->
-                    chineseModelFile.outputStream().use { output -> input.copyTo(output) }
-                }
-            }
-            mlEngine.loadModel(chineseModelFile.absolutePath, ModelType.CHINESE)
-
-            val englishModelFile = File(cacheDir, "english_phishing.onnx")
-            if (!englishModelFile.exists()) {
-                assets.open("model/english_phishing.onnx").use { input ->
-                    englishModelFile.outputStream().use { output -> input.copyTo(output) }
-                }
-            }
-            mlEngine.loadModel(englishModelFile.absolutePath, ModelType.ENGLISH)
 
             val japaneseModelFile = File(cacheDir, "japanese_phishing.onnx")
             if (!japaneseModelFile.exists()) {
@@ -73,7 +57,7 @@ class GuardApplication : Application() {
             }
             mlEngine.loadModel(smsModelFile.absolutePath, ModelType.SMS)
 
-            android.util.Log.i("GuardApp", "Japanese version: loaded all models")
+            android.util.Log.i("GuardApp", "Japanese version: loaded URL, JAPANESE, SMS models")
         } catch (e: Exception) {
             android.util.Log.e("GuardApp", "Failed to load ONNX model", e)
         }
