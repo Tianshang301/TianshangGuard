@@ -32,7 +32,7 @@ class GuardApplication : Application() {
         try {
             val mlEngine: MlEngine = get(MlEngine::class.java)
 
-            // Japanese version: load URL, Japanese, and SMS models
+            // Japanese version: load URL and Japanese models only
             val urlModelFile = File(cacheDir, "url_phishing.onnx")
             if (!urlModelFile.exists()) {
                 assets.open("model/url_phishing.onnx").use { input ->
@@ -49,15 +49,7 @@ class GuardApplication : Application() {
             }
             mlEngine.loadModel(japaneseModelFile.absolutePath, ModelType.JAPANESE)
 
-            val smsModelFile = File(cacheDir, "sms_phishing.onnx")
-            if (!smsModelFile.exists()) {
-                assets.open("model/sms_phishing.onnx").use { input ->
-                    smsModelFile.outputStream().use { output -> input.copyTo(output) }
-                }
-            }
-            mlEngine.loadModel(smsModelFile.absolutePath, ModelType.SMS)
-
-            android.util.Log.i("GuardApp", "Japanese version: loaded URL, JAPANESE, SMS models")
+            android.util.Log.i("GuardApp", "Japanese version: loaded URL, JAPANESE models")
         } catch (e: Exception) {
             android.util.Log.e("GuardApp", "Failed to load ONNX model", e)
         }
