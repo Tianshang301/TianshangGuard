@@ -1,5 +1,7 @@
 package com.tianshang.guard.core.ml
 
+import com.tianshang.guard.core.feedback.FeedbackEngine
+import com.tianshang.guard.core.retrieval.KnowledgeBase
 import com.tianshang.guard.core.telemetry.PerformanceTracer
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
@@ -9,7 +11,9 @@ import java.util.LinkedHashMap
 class MlEngineWithFallback(
     private val onnxEngine: OnnxMlEngine,
     private val fallbackEngine: RuleBasedEngine,
-    private val tracer: PerformanceTracer
+    private val tracer: PerformanceTracer,
+    private val knowledgeBase: KnowledgeBase,
+    private val feedbackEngine: FeedbackEngine
 ) : MlEngine {
 
     private val states = mutableMapOf<ModelType, MlState>()
@@ -42,10 +46,49 @@ class MlEngineWithFallback(
         val cacheKey = "SMS:$text"
         resultCache[cacheKey]?.let { return it }
 
-        val result = when {
+        val modelScore = when {
             states.any { it.value is MlState.Ready } -> runSmsWithTimeout(text)
             else -> fallbackEngine.analyzeSms(text)
         }
+
+        // BM25 retrieval augmentation
+        val bm25Result = if (knowledgeBase.isReady()) {
+            val retrieval = knowledgeBase.query(text, topK = 10)
+            if (retrieval.matchCount > 0) {
+                val retrievalRisk = when {
+                    retrieval.phishingRatio >= 0.7f -> RiskLevel.DANGEROUS
+                    retrieval.phishingRatio >= 0.4f -> RiskLevel.SUSPICIOUS
+                    else -> RiskLevel.SAFE
+                }
+                retrievalRisk
+            } else {
+                null
+            }
+        } else {
+            null
+        }
+
+        // Feedback retrieval augmentation
+        val feedbackResult = runBlocking {
+            val feedbackQuery = feedbackEngine.queryFeedback(text, topK = 10)
+            if (feedbackQuery.matchCount > 0) {
+                val feedbackRisk = when {
+                    feedbackQuery.phishingRatio >= 0.7f -> RiskLevel.DANGEROUS
+                    feedbackQuery.phishingRatio >= 0.4f -> RiskLevel.SUSPICIOUS
+                    else -> RiskLevel.SAFE
+                }
+                feedbackRisk
+            } else {
+                null
+            }
+        }
+
+        // Combine: max of model, BM25, and feedback
+        val scores = mutableListOf(modelScore.threshold)
+        bm25Result?.let { scores.add(it.threshold) }
+        feedbackResult?.let { scores.add(it.threshold) }
+        val combinedScore = scores.max()
+        val result = RiskLevel.fromScore(combinedScore)
 
         resultCache[cacheKey] = result
         return result

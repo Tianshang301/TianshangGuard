@@ -1,0 +1,37 @@
+package com.tianshang.guard.core.retrieval
+
+import android.content.Context
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
+class KnowledgeBase(private val context: Context) {
+
+    private val bm25Engine = Bm25Engine()
+    private val ioScope = CoroutineScope(Dispatchers.IO)
+
+    fun loadAsync() {
+        ioScope.launch {
+            try {
+                val inputStream = context.assets.open("knowledge_base/index.bin")
+                val success = bm25Engine.loadFromAssets(inputStream)
+                inputStream.close()
+                if (success) {
+                    android.util.Log.i("KnowledgeBase", "Loaded BM25 index: ${bm25Engine.getDocCount()} documents")
+                } else {
+                    android.util.Log.e("KnowledgeBase", "Failed to load BM25 index")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("KnowledgeBase", "Failed to open index file", e)
+            }
+        }
+    }
+
+    fun query(text: String, topK: Int = 10): Bm25Engine.RetrievalResult {
+        return bm25Engine.query(text, topK)
+    }
+
+    fun isReady(): Boolean = bm25Engine.isReady()
+
+    fun getDocCount(): Int = bm25Engine.getDocCount()
+}
