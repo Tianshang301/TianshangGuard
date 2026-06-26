@@ -97,9 +97,18 @@ class TieredAlertEngine(
     }
 
     override fun showSmsWarning(sender: String, body: String, riskLevel: RiskLevel) {
+        showSmsWarning(sender, body, riskLevel, useCooldown = true)
+    }
+
+    fun showSmsWarning(sender: String, body: String, riskLevel: RiskLevel, useCooldown: Boolean) {
         record(AlertType.SMS_PHISHING, domain = sender, riskLevel = riskLevel.name)
         val config = resolveAlertConfig(riskLevel)
-        if (cooldownManager.isInCooldown("sms_$sender", config.cooldownSeconds)) return
+
+        // Use body hash as part of cooldown key to differentiate different SMS content
+        val bodyHash = body.hashCode().toString()
+        val cooldownKey = "sms_${sender}_$bodyHash"
+
+        if (useCooldown && cooldownManager.isInCooldown(cooldownKey, config.cooldownSeconds)) return
 
         val intent = Intent(context, AlertActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -111,7 +120,7 @@ class TieredAlertEngine(
             putExtra("require_confirm", config.requireConfirm)
         }
         context.startActivity(intent)
-        cooldownManager.recordTrigger("sms_$sender")
+        if (useCooldown) cooldownManager.recordTrigger(cooldownKey)
     }
 
     private fun resolveAlertConfig(riskLevel: RiskLevel): AlertConfig {

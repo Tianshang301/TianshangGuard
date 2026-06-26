@@ -14,6 +14,9 @@ import com.tianshang.guard.core.ml.RuleBasedEngine
 import com.tianshang.guard.core.monitor.RemoteConfigProvider
 import com.tianshang.guard.core.monitor.ScreenShareMonitor
 import com.tianshang.guard.core.retrieval.KnowledgeBase
+import com.tianshang.guard.core.rl.FeatureBasedPredictor
+import com.tianshang.guard.core.rl.FeatureExtractor
+import com.tianshang.guard.core.rl.FeatureStore
 import com.tianshang.guard.core.telemetry.PerformanceTracer
 import com.tianshang.guard.data.local.GuardPreferences
 import com.tianshang.guard.data.local.security.EncryptedDatabaseProvider
@@ -67,12 +70,17 @@ val appModule = module {
     single<DnsEngine> { LocalDnsEngine(get(), get(), get(), get()) }
     single { ScreenShareMonitor(androidContext(), get(), get()) }
 
+    // ── RL Engine Layer ─────────────────────────────────────
+    single { FeatureExtractor() }
+    single { FeatureStore(get()) }
+    single { FeatureBasedPredictor(get()) }
+
     single { KnowledgeBase(androidContext()) }
-    single { FeedbackEngine(get(), get()) }
+    single { FeedbackEngine(get(), get(), get()) }
     single { ThresholdCalibrator(androidContext(), get()) }
     single { OnnxMlEngine() }
     single { RuleBasedEngine() }
-    single<MlEngine> { MlEngineWithFallback(get(), get(), get(), get(), get()) }
+    single<MlEngine> { MlEngineWithFallback(get(), get(), get(), get(), get(), get(), get()) }
 
     single { AnalyzeSmsUseCase(get()) }
 

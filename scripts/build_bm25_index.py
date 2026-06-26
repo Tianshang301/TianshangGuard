@@ -26,14 +26,37 @@ MAX_POSTINGS_PER_TOKEN = 100  # Keep only top-K postings per token
 
 
 def tokenize(text: str) -> list[str]:
-    """Simple character-level tokenizer for Chinese + English."""
+    """N-gram tokenizer for Chinese + English."""
     tokens = []
+    chars = []
+
     for ch in text:
         if '\u4e00' <= ch <= '\u9fff':  # CJK
-            tokens.append(ch)
+            chars.append(ch)
         elif ch.isalnum():  # English/digits
-            tokens.append(ch.lower())
+            chars.append(ch.lower())
+        else:
+            if chars:
+                _add_ngram_tokens(chars, tokens)
+                chars = []
+    if chars:
+        _add_ngram_tokens(chars, tokens)
+
     return tokens
+
+
+def _add_ngram_tokens(chars: list[str], tokens: list[str]):
+    """Extract 2-gram and 3-gram tokens from character sequence."""
+    s = ''.join(chars)
+    if len(s) <= 2:
+        tokens.append(s)
+    else:
+        # Bigrams
+        for i in range(len(s) - 1):
+            tokens.append(s[i:i+2])
+        # Trigrams
+        for i in range(len(s) - 2):
+            tokens.append(s[i:i+3])
 
 
 def load_chifraud() -> list[tuple[str, int]]:

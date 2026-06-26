@@ -3,6 +3,7 @@ package com.tianshang.guard.ui.sms
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tianshang.guard.core.alert.AlertEngine
+import com.tianshang.guard.core.alert.TieredAlertEngine
 import com.tianshang.guard.core.ml.MlEngine
 import com.tianshang.guard.core.ml.RiskLevel
 import com.tianshang.guard.domain.AnalyzeSmsUseCase
@@ -31,7 +32,12 @@ class SmsViewModel(
             val riskLevel = analyzeSmsUseCase.execute(sender, body)
             _result.value = SmsAnalysisResult(sender, body, riskLevel, true)
             if (riskLevel == RiskLevel.DANGEROUS || riskLevel == RiskLevel.SUSPICIOUS) {
-                alertEngine.showSmsWarning(sender, body, riskLevel)
+                // Manual analysis: no cooldown, always show warning
+                if (alertEngine is TieredAlertEngine) {
+                    alertEngine.showSmsWarning(sender, body, riskLevel, useCooldown = false)
+                } else {
+                    alertEngine.showSmsWarning(sender, body, riskLevel)
+                }
             }
         }
     }

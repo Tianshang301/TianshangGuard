@@ -94,13 +94,39 @@ class Bm25Engine {
 
     private fun tokenize(text: String): List<String> {
         val tokens = mutableListOf<String>()
+        val chars = mutableListOf<Char>()
+
         for (ch in text) {
             when {
-                ch in '\u4e00'..'\u9fff' -> tokens.add(ch.toString()) // CJK
-                ch.isLetterOrDigit() -> tokens.add(ch.lowercaseChar().toString()) // English/digits
+                ch in '\u4e00'..'\u9fff' -> chars.add(ch)
+                ch.isLetterOrDigit() -> chars.add(ch.lowercaseChar())
+                else -> {
+                    if (chars.isNotEmpty()) {
+                        addNgramTokens(chars, tokens)
+                        chars.clear()
+                    }
+                }
             }
         }
+        if (chars.isNotEmpty()) {
+            addNgramTokens(chars, tokens)
+        }
+
         return tokens
+    }
+
+    private fun addNgramTokens(chars: List<Char>, tokens: MutableList<String>) {
+        val str = chars.joinToString("")
+        if (str.length <= 2) {
+            tokens.add(str)
+        } else {
+            for (i in 0 until str.length - 1) {
+                tokens.add(str.substring(i, i + 2))
+            }
+            for (i in 0 until str.length - 2) {
+                tokens.add(str.substring(i, i + 3))
+            }
+        }
     }
 
     private fun decompressZlib(data: ByteArray): ByteArray {
