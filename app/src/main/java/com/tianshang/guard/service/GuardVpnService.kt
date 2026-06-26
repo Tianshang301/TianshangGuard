@@ -18,6 +18,7 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.nio.ByteBuffer
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,18 +31,15 @@ import org.koin.android.ext.android.inject
 class GuardVpnService : VpnService() {
 
     private var vpnInterface: ParcelFileDescriptor? = null
-    private var running = false
-    private var isRestarting = false
+    @Volatile private var running = false
+    @Volatile private var isRestarting = false
+    @Volatile private var isDestroying = false
 
     private val dnsEngine: DnsEngine by inject()
 
     private val packetHandler = DnsPacketHandler()
 
-    private val dnsCache = object : LinkedHashMap<String, DnsResult>(1024, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, DnsResult>?): Boolean {
-            return size > 2048
-        }
-    }
+    private val dnsCache = ConcurrentHashMap<String, DnsResult>(2048)
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var keepaliveJob: Job? = null
@@ -158,7 +156,7 @@ class GuardVpnService : VpnService() {
                 }
 
                 if (response != null) {
-                    output.write(response.array(), 0, response.remaining())
+                    output.write(response.array(), response.arrayOffset(), response.limit())
                 }
             } catch (e: java.io.EOFException) {
                 android.util.Log.w("GuardVpnService", "VPN interface closed (EOF)")
@@ -218,14 +216,14 @@ class GuardVpnService : VpnService() {
             query.put(0)
             query.putShort(1); query.putShort(1)
 
-            val socket = DatagramSocket()
-            socket.soTimeout = 2000
-            val request = DatagramPacket(
-                query.array(), query.position(),
-                InetAddress.getByName(UPSTREAM_DNS), UPSTREAM_DNS_PORT
-            )
-            socket.send(request)
-            socket.close()
+            DatagramSocket().use { socket ->
+                socket.soTimeout = 2000
+                val request = DatagramPacket(
+                    query.array(), query.position(),
+                    InetAddress.getByName(UPSTREAM_DNS), UPSTREAM_DNS_PORT
+                )
+                socket.send(request)
+            }
         } catch (e: Exception) {
             android.util.Log.v("GuardVpnService", "Keepalive error (normal if idle)", e)
         }
@@ -234,16 +232,16 @@ class GuardVpnService : VpnService() {
     private fun forwardToUpstreamDns(query: ByteBuffer): ByteBuffer? {
         return try {
             val dnsPayload = packetHandler.extractDnsPayload(query)
-            val socket = DatagramSocket()
-            socket.soTimeout = DNS_TIMEOUT_MS
-            val request = DatagramPacket(dnsPayload, dnsPayload.size, InetAddress.getByName(UPSTREAM_DNS), UPSTREAM_DNS_PORT)
-            socket.send(request)
-            val responseBuf = ByteArray(1500)
-            val responsePkt = DatagramPacket(responseBuf, responseBuf.size)
-            socket.receive(responsePkt)
-            socket.close()
-            val upstreamResponse = ByteBuffer.wrap(responsePkt.data, 0, responsePkt.length)
-            packetHandler.buildResponseFromUpstream(query, upstreamResponse)
+            DatagramSocket().use { socket ->
+                socket.soTimeout = DNS_TIMEOUT_MS
+                val request = DatagramPacket(dnsPayload, dnsPayload.size, InetAddress.getByName(UPSTREAM_DNS), UPSTREAM_DNS_PORT)
+                socket.send(request)
+                val responseBuf = ByteArray(1500)
+                val responsePkt = DatagramPacket(responseBuf, responseBuf.size)
+                socket.receive(responsePkt)
+                val upstreamResponse = ByteBuffer.wrap(responsePkt.data, 0, responsePkt.length)
+                packetHandler.buildResponseFromUpstream(query, upstreamResponse)
+            }
         } catch (e: Exception) {
             android.util.Log.w("GuardVpnService", "Upstream DNS error", e)
             null
@@ -251,14 +249,18 @@ class GuardVpnService : VpnService() {
     }
 
     private fun restartVpn() {
-        if (isRestarting) return
-        isRestarting = true
+        synchronized(this) {
+            if (isRestarting || isDestroying) return
+            isRestarting = true
+        }
         android.util.Log.i("GuardVpnService", "Restarting VPN...")
 
         teardownInternal()
 
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            isRestarting = false
+            synchronized(this) {
+                isRestarting = false
+            }
             startVpn()
         }, 500)
     }
@@ -319,8 +321,6 @@ class GuardVpnService : VpnService() {
             .setOngoing(true)
             .build()
     }
-
-    private var isDestroying = false
 
     override fun onDestroy() {
         super.onDestroy()

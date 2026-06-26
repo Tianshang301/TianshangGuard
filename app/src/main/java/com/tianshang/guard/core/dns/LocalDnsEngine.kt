@@ -4,6 +4,10 @@ import com.tianshang.guard.core.alert.AlertEngine
 import com.tianshang.guard.core.ml.MlEngine
 import com.tianshang.guard.core.ml.RiskLevel
 import com.tianshang.guard.data.repository.RuleRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class LocalDnsEngine(
@@ -17,6 +21,9 @@ class LocalDnsEngine(
         expectedItems = 100_000,
         targetFpp = 0.001
     )
+    private var cachedKnownDomains: List<String> = emptyList()
+    private var lastDomainCacheUpdate = 0L
+    private val domainCacheTtl = 60_000L // 1 minute TTL
 
     override fun resolve(domain: String): DnsResult {
         if (ruleRepository.isWhitelisted(domain)) {
@@ -64,9 +71,13 @@ class LocalDnsEngine(
     }
 
     private fun calculateDomainSimilarity(domain: String): Float {
-        val knownDomains = ruleRepository.getKnownDomains()
-        if (knownDomains.isEmpty()) return 0f
-        return knownDomains.maxOf { levenshteinSimilarity(domain, it) }
+        val now = System.currentTimeMillis()
+        if (now - lastDomainCacheUpdate > domainCacheTtl) {
+            cachedKnownDomains = ruleRepository.getKnownDomains()
+            lastDomainCacheUpdate = now
+        }
+        if (cachedKnownDomains.isEmpty()) return 0f
+        return cachedKnownDomains.maxOf { levenshteinSimilarity(domain, it) }
     }
 
     private fun levenshteinSimilarity(a: String, b: String): Float {
@@ -97,14 +108,18 @@ class LocalDnsEngine(
         return "1.1.1.1"
     }
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun start() {
-        runBlocking {
+        scope.launch {
             val allDomains = ruleRepository.getKnownDomains()
             bloomFilter = AdaptiveBloomFilter(
                 expectedItems = if (allDomains.size * 2 > 100_000) allDomains.size * 2 else 100_000,
                 targetFpp = 0.001
             )
             allDomains.forEach { bloomFilter.add(it) }
+            cachedKnownDomains = allDomains
+            lastDomainCacheUpdate = System.currentTimeMillis()
         }
     }
 
