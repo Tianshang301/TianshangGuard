@@ -1,5 +1,6 @@
 package com.tianshang.guard.ui.settings
 
+import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -174,7 +175,10 @@ fun SettingsScreen() {
         }
         Spacer(modifier = Modifier.height(12.dp))
         SettingsSection(stringResource(R.string.settings_section_about)) {
-            SettingsInfo(stringResource(R.string.settings_version), "v1.0.0")
+            val versionName = try {
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0.0"
+            } catch (_: Exception) { "1.0.0" }
+            SettingsInfo(stringResource(R.string.settings_version), "v$versionName")
             SettingsInfo(stringResource(R.string.settings_license), "MIT")
         }
         Spacer(modifier = Modifier.height(12.dp))
