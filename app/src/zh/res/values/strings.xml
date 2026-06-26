@@ -126,6 +126,16 @@
     <string name="sms_tip_suspicious">该短信包含可疑内容，请勿点击任何链接或回复个人信息。</string>
     <string name="sms_tip_dangerous">该短信高度可疑！可能是钓鱼或诈骗信息，请立即删除，切勿操作。</string>
 
+    <!-- Stats Time Ranges -->
+    <string name="stats_range_24h">24小时拦截</string>
+    <string name="stats_range_7d">7天</string>
+    <string name="stats_range_30d">30天</string>
+    <string name="stats_range_365d">365天</string>
+    <string name="stats_range_total">总拦截次数</string>
+
+    <!-- Model Disclaimer -->
+    <string name="model_disclaimer">AI 模型分析仅供参考，可能存在偏差，请保持警惕，以实际判断为准</string>
+
     <!-- Report Screen -->
     <string name="report_screen_title">举报</string>
     <string name="report_screen_subtitle">提交可疑域名帮助我们完善防护</string>

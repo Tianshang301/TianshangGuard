@@ -4,7 +4,34 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+
+    <!-- Shield outline -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M12,2 L5,5 L5,12 Q5,18 12,22 Q19,18 19,12 L19,5 Z" />
+
+    <!-- Sword hilt (grip) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M12,1L3,5v6c0,5.55 3.84,10.74 9,12 5.16,-1.26 9,-6.45 9,-12V5l-9,-4zM12,11.99h7c-0.53,4.12 -3.28,7.79 -7,8.94V12H5V6.3l7,-3.11v8.8z" />
+        android:pathData="M11,1 h2 v3 h-2 z" />
+
+    <!-- Sword crossguard -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M8,4 h8 v1.5 h-8 z" />
+
+    <!-- Sword blade -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M11,5.5 h2 v14 h-2 z" />
+
+    <!-- Sword blade tip -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M11,19.5 L13,19.5 L12,22 Z" />
+
 </vector>

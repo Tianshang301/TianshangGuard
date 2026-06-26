@@ -126,6 +126,16 @@
     <string name="sms_tip_suspicious">This SMS contains suspicious content. Do not click any links or reply with personal information.</string>
     <string name="sms_tip_dangerous">This SMS is highly suspicious! It may be phishing or a scam. Delete it immediately and do not interact with it.</string>
 
+    <!-- Stats Time Ranges -->
+    <string name="stats_range_24h">24h Blocked</string>
+    <string name="stats_range_7d">7 Days</string>
+    <string name="stats_range_30d">30 Days</string>
+    <string name="stats_range_365d">365 Days</string>
+    <string name="stats_range_total">Total Blocked</string>
+
+    <!-- Model Disclaimer -->
+    <string name="model_disclaimer">AI analysis is for reference only. Results may have errors. Please stay vigilant and use your best judgment.</string>
+
     <!-- Report Screen -->
     <string name="report_screen_title">Report</string>
     <string name="report_screen_subtitle">Submit suspicious domains to help us improve protection</string>

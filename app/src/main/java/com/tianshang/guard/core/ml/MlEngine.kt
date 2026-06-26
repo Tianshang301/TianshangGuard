@@ -4,12 +4,13 @@ enum class ModelType {
     URL,
     CHINESE,
     ENGLISH,
-    JAPANESE
+    JAPANESE,
+    SMS
 }
 
 enum class RiskLevel(val threshold: Float) {
-    SAFE(0.3f),
-    SUSPICIOUS(0.7f),
+    SAFE(0.250f),
+    SUSPICIOUS(0.797f),
     DANGEROUS(1.0f);
 
     companion object {
