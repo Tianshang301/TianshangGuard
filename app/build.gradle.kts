@@ -8,12 +8,21 @@ android {
     namespace = "com.tianshang.guard"
     compileSdk = 35
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("release.jks")
+            storePassword = "TsGuard@2026Release"
+            keyAlias = "guard"
+            keyPassword = "TsGuard@2026Release"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.tianshang.guard"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
@@ -27,6 +36,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
             lint {
                 checkReleaseBuilds = false
             }

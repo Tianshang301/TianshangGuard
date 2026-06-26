@@ -36,6 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tianshang.guard.R
+import com.tianshang.guard.ui.DisclaimerText
 import com.tianshang.guard.core.ml.RiskLevel
 import com.tianshang.guard.ui.theme.DeepNavy
 import com.tianshang.guard.ui.theme.GuardGreen
@@ -152,6 +153,8 @@ fun SmsResultCard(result: SmsAnalysisResult) {
                 RiskLevel.DANGEROUS -> stringResource(R.string.sms_tip_dangerous)
             }
             Text(tip, style = MaterialTheme.typography.bodySmall, color = OnSurfaceVariantDark)
+            Spacer(modifier = Modifier.height(8.dp))
+            DisclaimerText()
         }
     }
 }

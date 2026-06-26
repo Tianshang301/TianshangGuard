@@ -79,17 +79,17 @@ class OnnxMlEngine : MlEngine {
         val textModelType = detectLanguage(text)
         val textScore = analyzeWithModelScore(text, textModelType)
 
-        // 2. Extract URL from text
+        // 2. SMS specialist model (trained on FBS + ChiFraud short texts)
+        val smsScore = analyzeWithModelScore(text, ModelType.SMS)
+
+        // 3. Extract URL from text
         val url = extractUrl(text)
 
-        // 3. If URL exists, also analyze with URL model
-        if (url != null) {
-            val urlScore = analyzeWithModelScore(url, ModelType.URL)
-            // Return the maximum of text score and URL score
-            return maxOf(textScore, urlScore)
-        }
+        // 4. If URL exists, also analyze with URL model
+        val urlScore = if (url != null) analyzeWithModelScore(url, ModelType.URL) else 0f
 
-        return textScore
+        // 5. Fusion: maxOf all available expert scores
+        return maxOf(textScore, smsScore, urlScore)
     }
 
     private fun detectLanguage(text: String): ModelType {
