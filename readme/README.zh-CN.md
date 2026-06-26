@@ -330,7 +330,7 @@ git push origin feature/your-feature
 ## 致谢
 
 - [PhiUSIIL](https://www.kaggle.com/datasets/shashwatwork/phiusiil-phishing-url-dataset) — URL 钓鱼数据集
-- [ChiFraud](https://github.com/) — 中文欺诈短信数据集
+- [ChiFraud](https://github.com/xuemingxxx/ChiFraud) — 中文欺诈短信数据集
 - [ONNX Runtime](https://onnxruntime.ai/) — 端侧推理引擎
 - [PhishTank](https://www.phishtank.com/) — 钓鱼域名情报
 
