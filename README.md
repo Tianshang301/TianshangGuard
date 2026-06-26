@@ -330,7 +330,7 @@ Submit suspicious domains to `rules/community/` directory in JSON format:
 ## Acknowledgments
 
 - [PhiUSIIL](https://www.kaggle.com/datasets/shashwatwork/phiusiil-phishing-url-dataset) — URL phishing dataset
-- [ChiFraud](https://github.com/) — Chinese fraud SMS dataset
+- [ChiFraud](https://github.com/xuemingxxx/ChiFraud) — Chinese fraud SMS dataset
 - [ONNX Runtime](https://onnxruntime.ai/) — On-device inference engine
 - [PhishTank](https://www.phishtank.com/) — Phishing domain intelligence
 
