@@ -9,8 +9,8 @@ enum class ModelType {
 }
 
 enum class RiskLevel(val threshold: Float) {
-    SAFE(0.250f),
-    SUSPICIOUS(0.797f),
+    SAFE(0.10f),
+    SUSPICIOUS(0.50f),
     DANGEROUS(1.0f);
 
     companion object {
