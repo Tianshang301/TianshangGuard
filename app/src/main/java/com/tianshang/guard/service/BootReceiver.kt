@@ -11,8 +11,11 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
             val prefs = GuardPreferences(context)
             if (prefs.isBootStartEnabled()) {
-                val serviceIntent = Intent(context, ForegroundService::class.java)
-                context.startForegroundService(serviceIntent)
+                // Start VPN service (which also starts foreground)
+                val vpnIntent = Intent(context, GuardVpnService::class.java).apply {
+                    action = GuardVpnService.ACTION_START
+                }
+                context.startForegroundService(vpnIntent)
             }
         }
     }
