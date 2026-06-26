@@ -18,11 +18,12 @@
 | 功能 | 说明 |
 |------|------|
 | **DNS 域名拦截** | Bloom Filter 快速过滤 + 同形字符检测（Punycode/西里尔/全角） |
-| **网页钓鱼检测** | Byte-level Transformer 端侧推理（ONNX Runtime） |
-| **短信诈骗检测** | 手动粘贴分析 + BroadcastReceiver 实时拦截 |
+| **网页钓鱼检测** | Byte-level Transformer 端侧推理（ONNX Runtime + NNAPI） |
+| **短信诈骗检测** | 多模型融合：语言检测 + SMS 专家模型 + URL 提取 |
 | **行为监控** | 检测屏幕共享 + 银行应用组合，阻断社会工程学攻击 |
 | **分级预警** | 静默记录 → 横幅提示 → 弹窗确认 → 全屏阻断 |
 | **规则更新** | 远程拉取黑白名单，支持社区贡献 |
+| **多语言支持** | 中文（zh）、英文（en）、日语（ja）版本 |
 
 ---
 
@@ -53,7 +54,7 @@ graph TB
 
     subgraph Data["Data 层"]
         N[(Room DB<br/>域名 + 预警日志)]
-        O[ONNX Models<br/>url + chinese]
+        O[ONNX Models<br/>url + chinese + sms]
         P[Remote Rules<br/>GitHub]
     end
 
@@ -75,9 +76,9 @@ flowchart LR
     A[输入文本] --> B[ByteTokenizer<br/>UTF-8 编码]
     B --> C[ONNX 模型<br/>INT8 量化]
     C --> D{风险分数}
-    D -->|< 0.3| E[✅ 安全]
-    D -->|0.3 ~ 0.7| F[⚠️ 可疑]
-    D -->|> 0.7| G[🚨 危险]
+    D -->|< 0.10| E[✅ 安全]
+    D -->|0.10 ~ 0.50| F[⚠️ 可疑]
+    D -->|≥ 0.50| G[🚨 危险]
     C -.->|超时/失败| H[规则引擎兜底]
     H --> D
 ```
@@ -90,14 +91,20 @@ flowchart TD
     B -->|否| C[忽略]
     B -->|是| D[SmsReceiver<br/>BroadcastReceiver]
     D --> E[AnalyzeSmsUseCase]
-    E --> F[MlEngine.analyzeSms]
-    F --> G{风险等级}
-    G -->|SAFE| H[静默记录]
-    G -->|SUSPICIOUS| I[横幅预警]
-    G -->|DANGEROUS| J[弹窗预警<br/>+ 反诈提示]
+    E --> F[语言检测]
+    F --> G[文本模型<br/>中文/英文/日语]
+    F --> H[SMS 专家模型]
+    F --> I[URL 提取 + 模型]
+    G --> J[maxOf 融合]
+    H --> J
+    I --> J
+    J --> K{风险等级}
+    K -->|SAFE| L[静默记录]
+    K -->|SUSPICIOUS| M[横幅预警]
+    K -->|DANGEROUS| N[弹窗预警<br/>+ 反诈提示]
 
-    K[手动输入] --> L[SmsScreen]
-    L --> E
+    O[手动输入] --> P[SmsScreen]
+    P --> E
 ```
 
 ---
@@ -118,45 +125,49 @@ flowchart TD
 git clone https://github.com/Tianshang301/TianshangGuard.git
 cd TianshangGuard
 
-# 构建中文版
+# 构建中文版（推荐）
 ./gradlew assembleZhRelease
 
 # 构建英文版
 ./gradlew assembleEnRelease
 
+# 构建日语版
+./gradlew assembleJaRelease
+
 # 安装到设备
-adb install app/build/outputs/apk/zh/release/app-zh-release-unsigned.apk
+adb install app/build/outputs/apk/zh/release/app-zh-release.apk
 ```
 
 ### 下载
 
-| 版本 | 语言 | 包含模型 | 体积 |
+| 版本 | 语言 | 包含模型 | 状态 |
 |------|------|----------|------|
-| [v1.0.0-chinese](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.0.0-chinese) | 中文 UI | URL + 中文短信 | ~19 MB |
-| [v1.0.0-english](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.0.0-english) | 英文 UI | URL + 英文短信 | ~19 MB |
+| [v1.1.0-chinese](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.1.0-chinese) | 中文 UI | URL + 中文 + SMS | ✅ 已发布 |
 
 ---
 
 ## 模型训练
 
-项目包含三个 BytePhishingTransformer 模型：
+项目包含五个 BytePhishingTransformer 模型：
 
-| 模型 | 数据集 | 参数量 | ONNX 体积 |
-|------|--------|--------|-----------|
-| URL 检测 | PhiUSIIL（23.5 万条） | 120,321 | 312 KB |
-| 中文检测 | ChiFraud + 合成增强 | 644,865 | 1021 KB |
-| 英文检测 | UCI + NCSU + IMC25 + 合成 | 120,321 | 312 KB |
+| 模型 | 文件 | 大小 | 参数量 | 训练数据 | 性能 |
+|------|------|------|--------|----------|------|
+| URL 检测 | url_phishing.onnx | 312 KB | 120,321 | PhiUSIIL（23.5 万条） | AUC=0.9942 |
+| 中文文本 | chinese_phishing.onnx | 1,021 KB | 644,865 | ChiFraud（8.2 万条清洗） | AUC=0.9492 |
+| SMS 诈骗 | sms_phishing.onnx | 312 KB | 120,321 | FBS SMS + ChiFraud（1.1 万条） | Recall=97.88% |
+| 英文文本 | english_phishing.onnx | 312 KB | 120,321 | UCI + NCSU + IMC25 | 待测试 |
+| 日语文本 | japanese_phishing.onnx | 312 KB | 120,321 | 生成日语 SMS | 待测试 |
 
 ### 超参数
 
-| 超参数 | URL 模型 | 中文模型 | 英文模型 |
-|--------|----------|----------|----------|
-| d_model | 64 | 128 | 64 |
-| n_heads | 2 | 4 | 2 |
-| n_layers | 2 | 4 | 2 |
-| d_ff | 128 | 256 | 128 |
-| max_seq_len | 512 | 512 | 512 |
-| vocab_size | 256 | 256 | 256 |
+| 超参数 | URL/SMS/英/日模型 | 中文模型 |
+|--------|-------------------|----------|
+| d_model | 64 | 128 |
+| n_heads | 2 | 4 |
+| n_layers | 2 | 4 |
+| d_ff | 128 | 256 |
+| max_seq_len | 512 | 512 |
+| vocab_size | 256 | 256 |
 
 ### 训练命令
 
@@ -167,13 +178,32 @@ cd scripts
 python train_phishing_model.py --mode url
 
 # 训练中文模型
-python train_phishing_model.py --mode chinese
+python train_phishing_model.py --mode chinese --fresh
+
+# 训练 SMS 模型
+python train_phishing_model.py --mode sms
 
 # 训练英文模型
 python train_phishing_model.py --mode english
+
+# 训练日语模型
+python train_phishing_model.py --mode japanese
 ```
 
 训练完成后，模型自动导出为 ONNX INT8 量化版本并复制到 `app/src/main/assets/model/`。
+
+### 阈值校准
+
+训练后校准最优阈值：
+
+```bash
+python _calibrate_thresholds.py
+```
+
+当前阈值（已部署）：
+- **SAFE**: 分数 < 0.10
+- **SUSPICIOUS**: 0.10 – 0.50
+- **DANGEROUS**: ≥ 0.50
 
 ### 评估
 
@@ -183,6 +213,9 @@ python test_onnx_models.py
 
 # 拟合检查
 python check_fitting.py
+
+# 模型诊断
+python diagnose_model.py
 ```
 
 ---
@@ -190,33 +223,49 @@ python check_fitting.py
 ## 项目结构
 
 ```
-tianshang-guard/
-├── app/src/main/
-│   ├── java/com/tianshang/guard/
-│   │   ├── core/
-│   │   │   ├── dns/          # DNS 引擎、同形字符检测、Bloom Filter
-│   │   │   ├── ml/           # MlEngine、OnnxMlEngine、规则引擎
-│   │   │   ├── monitor/      # 行为监控（屏幕共享检测）
-│   │   │   ├── alert/        # 分级预警引擎
-│   │   │   └── telemetry/    # 性能追踪
-│   │   ├── data/
-│   │   │   ├── local/        # Room 数据库、加密存储、偏好设置
-│   │   │   ├── remote/       # GitHub 规则 API
-│   │   │   └── repository/   # 数据仓库
-│   │   ├── domain/           # UseCase 层
-│   │   ├── service/          # VPN、前台服务、短信接收器、开机启动
-│   │   ├── ui/               # Compose UI（主页、短信、统计、设置、预警）
-│   │   └── di/               # Koin 依赖注入
-│   └── assets/
-│       ├── model/            # ONNX 模型文件
-│       └── rules/            # 内置黑白名单
+TianshangGuard/
+├── app/src/
+│   ├── main/
+│   │   ├── java/com/tianshang/guard/
+│   │   │   ├── core/
+│   │   │   │   ├── dns/          # DNS 引擎、同形字符检测、Bloom Filter
+│   │   │   │   ├── ml/           # MlEngine、OnnxMlEngine、规则引擎
+│   │   │   │   ├── monitor/      # 行为监控（屏幕共享检测）
+│   │   │   │   ├── alert/        # 分级预警引擎
+│   │   │   │   ├── optimizer/    # 电池优化
+│   │   │   │   ├── telemetry/    # 性能追踪
+│   │   │   │   └── update/       # 规则更新 Worker
+│   │   │   ├── data/
+│   │   │   │   ├── local/        # Room 数据库、偏好设置
+│   │   │   │   ├── remote/       # GitHub 规则 API
+│   │   │   │   └── repository/   # 数据仓库
+│   │   │   ├── domain/           # UseCase 层
+│   │   │   ├── service/          # VPN、前台服务、短信接收器、开机启动
+│   │   │   ├── ui/               # Compose UI（主页、短信、统计、设置、预警）
+│   │   │   └── di/               # Koin 依赖注入
+│   │   └── assets/
+│   │       ├── model/            # ONNX 模型文件（5 个模型）
+│   │       └── rules/            # 内置黑白名单
+│   ├── zh/                       # 中文版本
+│   │   ├── res/values/strings.xml
+│   │   └── java/.../GuardApplication.kt  # 加载 URL + 中文 + SMS
+│   ├── en/                       # 英文版本
+│   │   ├── res/values/strings.xml
+│   │   └── java/.../GuardApplication.kt  # 加载 URL + 英文
+│   ├── ja/                       # 日语版本
+│   │   ├── res/values/strings.xml
+│   │   └── java/.../GuardApplication.kt  # 加载 URL + 日语
+│   └── test/                     # 单元测试
 ├── scripts/
-│   ├── train_phishing_model.py  # 模型训练脚本
-│   ├── merge_datasets.py        # 数据集合并
-│   ├── validate_model.py        # 模型验证
-│   └── raw_data/                # 训练数据
+│   ├── train_phishing_model.py   # 主训练脚本（1483 行）
+│   ├── clean_chinese_data.py     # 数据清洗流水线
+│   ├── _calibrate_thresholds.py  # 阈值校准
+│   ├── validate_model.py         # 模型验证
+│   ├── check_fitting.py          # 拟合检查
+│   └── raw_data/                 # 训练数据集
 ├── docs/
-│   └── report.tex               # 技术报告（LaTeX）
+│   ├── report.tex                # 技术报告
+│   └── v1.1.0_report.tex        # v1.1.0 技术报告
 └── .github/workflows/ci.yml     # CI 配置
 ```
 
@@ -226,9 +275,9 @@ tianshang-guard/
 
 ### 核心承诺
 
-- **纯本地分析**：所有推理在设备端完成，零数据上传
+- **纯本地分析**：所有推理通过 ONNX Runtime + NNAPI 硬件加速在设备端完成
 - **开源可审计**：代码完全公开，接受社区审查
-- **数据库加密**：Room + SQLCipher 加密存储（可选）
+- **仅本地存储**：所有数据存储在本地 Room 数据库，用户可随时导出或删除
 - **最小权限**：仅请求必要权限，用户可逐项控制
 
 ### 能力边界
