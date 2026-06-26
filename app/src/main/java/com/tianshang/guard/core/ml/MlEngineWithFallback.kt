@@ -2,6 +2,8 @@ package com.tianshang.guard.core.ml
 
 import com.tianshang.guard.core.feedback.FeedbackEngine
 import com.tianshang.guard.core.retrieval.KnowledgeBase
+import com.tianshang.guard.core.rl.FeatureBasedPredictor
+import com.tianshang.guard.core.rl.FeatureExtractor
 import com.tianshang.guard.core.telemetry.PerformanceTracer
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
@@ -13,7 +15,9 @@ class MlEngineWithFallback(
     private val fallbackEngine: RuleBasedEngine,
     private val tracer: PerformanceTracer,
     private val knowledgeBase: KnowledgeBase,
-    private val feedbackEngine: FeedbackEngine
+    private val feedbackEngine: FeedbackEngine,
+    private val featureExtractor: FeatureExtractor,
+    private val featurePredictor: FeatureBasedPredictor
 ) : MlEngine {
 
     private val states = mutableMapOf<ModelType, MlState>()
@@ -46,70 +50,82 @@ class MlEngineWithFallback(
         val cacheKey = "SMS:$text"
         resultCache[cacheKey]?.let { return it }
 
-        val modelScore = when {
-            states.any { it.value is MlState.Ready } -> runSmsWithTimeout(text)
-            else -> fallbackEngine.analyzeSms(text)
+        // Check feedback whitelist first (user-marked false positives)
+        val isWhitelisted = runBlocking {
+            feedbackEngine.isWhitelisted(text)
+        }
+        if (isWhitelisted) {
+            resultCache[cacheKey] = RiskLevel.SAFE
+            return RiskLevel.SAFE
         }
 
-        // BM25 retrieval augmentation
-        val bm25Result = if (knowledgeBase.isReady()) {
+        // 1. Model inference → continuous score
+        val modelScore = when {
+            states.any { it.value is MlState.Ready } -> runSmsWithScore(text)
+            else -> fallbackEngine.analyzeSms(text).threshold
+        }
+
+        // 2. BM25 retrieval → continuous score (phishingRatio)
+        val bm25Score = if (knowledgeBase.isReady()) {
             val retrieval = knowledgeBase.query(text, topK = 10)
-            if (retrieval.matchCount > 0) {
-                val retrievalRisk = when {
-                    retrieval.phishingRatio >= 0.7f -> RiskLevel.DANGEROUS
-                    retrieval.phishingRatio >= 0.4f -> RiskLevel.SUSPICIOUS
-                    else -> RiskLevel.SAFE
-                }
-                retrievalRisk
-            } else {
-                null
-            }
+            if (retrieval.matchCount > 0) retrieval.phishingRatio else null
         } else {
             null
         }
 
-        // Feedback retrieval augmentation
-        val feedbackResult = runBlocking {
+        // 3. Feedback retrieval → continuous score (phishingRatio)
+        val feedbackScore = runBlocking {
             val feedbackQuery = feedbackEngine.queryFeedback(text, topK = 10)
-            if (feedbackQuery.matchCount > 0) {
-                val feedbackRisk = when {
-                    feedbackQuery.phishingRatio >= 0.7f -> RiskLevel.DANGEROUS
-                    feedbackQuery.phishingRatio >= 0.4f -> RiskLevel.SUSPICIOUS
-                    else -> RiskLevel.SAFE
-                }
-                feedbackRisk
-            } else {
-                null
-            }
+            if (feedbackQuery.matchCount > 0) feedbackQuery.phishingRatio else null
         }
 
-        // Combine: max of model, BM25, and feedback
-        val scores = mutableListOf(modelScore.threshold)
-        bm25Result?.let { scores.add(it.threshold) }
-        feedbackResult?.let { scores.add(it.threshold) }
-        val combinedScore = scores.max()
+        // 4. Feature-based prediction → continuous score
+        val featureScore = runBlocking {
+            val features = featureExtractor.extractFeatures(text)
+            val prediction = featurePredictor.predict(features)
+            if (prediction.matchCount > 0) prediction.riskLevel.threshold else null
+        }
+
+        // Weighted fusion with continuous scores
+        val scores = mutableListOf<Pair<Float, Float>>() // (score, weight)
+        scores.add(Pair(modelScore, 0.5f))
+        bm25Score?.let { scores.add(Pair(it, 0.2f)) }
+        feedbackScore?.let { scores.add(Pair(it, 0.2f)) }
+        featureScore?.let { scores.add(Pair(it, 0.1f)) }
+
+        val totalWeight = scores.sumOf { it.second.toDouble() }.toFloat()
+        val combinedScore = if (totalWeight > 0) {
+            scores.sumOf { (it.first * it.second).toDouble() }.toFloat() / totalWeight
+        } else {
+            modelScore
+        }
+
         val result = RiskLevel.fromScore(combinedScore)
 
         resultCache[cacheKey] = result
         return result
     }
 
-    private fun runSmsWithTimeout(text: String): RiskLevel {
+    private fun runSmsWithScore(text: String): Float {
         return try {
             val startTime = System.currentTimeMillis()
-            val result = runBlocking {
+            val score = runBlocking {
                 withTimeout(inferenceTimeout) {
-                    onnxEngine.analyzeSms(text)
+                    onnxEngine.analyzeSmsScore(text)
                 }
             }
             tracer.recordInferenceTime(System.currentTimeMillis() - startTime)
-            result
+            score
         } catch (e: TimeoutCancellationException) {
             tracer.recordTimeout()
-            fallbackEngine.analyzeSms(text)
+            fallbackEngine.analyzeSms(text).threshold
         } catch (e: Exception) {
-            fallbackEngine.analyzeSms(text)
+            fallbackEngine.analyzeSms(text).threshold
         }
+    }
+
+    private fun runSmsWithTimeout(text: String): RiskLevel {
+        return RiskLevel.fromScore(runSmsWithScore(text))
     }
 
     private fun analyzeWithFallback(text: String, type: ModelType): RiskLevel {

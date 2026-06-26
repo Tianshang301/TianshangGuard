@@ -1,97 +1,60 @@
 package com.tianshang.guard.core.feedback
 
+import com.tianshang.guard.core.rl.FeatureExtractor
+import com.tianshang.guard.core.rl.FeatureStore
 import com.tianshang.guard.data.local.database.FeedbackDao
 import com.tianshang.guard.data.local.database.FeedbackEntity
 import com.tianshang.guard.data.local.database.FeedbackLabel
-import com.tianshang.guard.data.repository.RuleRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.security.MessageDigest
 
 class FeedbackEngine(
     private val feedbackDao: FeedbackDao,
-    private val ruleRepository: RuleRepository
+    private val featureExtractor: FeatureExtractor,
+    private val featureStore: FeatureStore
 ) {
 
     private val ioScope = CoroutineScope(Dispatchers.IO)
-    private val maxFeedbackCount = 500
+    private val maxFeedbackCount = 1000
 
     fun recordFeedback(text: String, modelScore: Float, label: FeedbackLabel, source: String) {
         ioScope.launch {
             val textHash = computeTextHash(text)
+            val tokens = tokenize(text).joinToString(" ")
+            val features = featureExtractor.extractFeatures(text)
             val feedback = FeedbackEntity(
                 textHash = textHash,
+                tokens = tokens,
                 modelScore = modelScore,
                 label = label,
-                source = source
+                source = source,
+                features = features.toJson()
             )
             feedbackDao.insert(feedback)
             enforceLimit()
-
-            // Auto-update rules based on feedback
-            autoUpdateRules(text, label, source)
         }
     }
 
-    private suspend fun autoUpdateRules(text: String, label: FeedbackLabel, source: String) {
-        when (label) {
-            FeedbackLabel.PHISHING -> {
-                // Extract sender/URL/domain and add to blacklist
-                val extracted = extractIdentifier(text, source)
-                if (extracted != null) {
-                    ruleRepository.addToBlacklist(extracted)
-                    android.util.Log.i("FeedbackEngine", "Auto-blacklisted: $extracted")
-                }
-            }
-            FeedbackLabel.FALSE_POSITIVE -> {
-                // Extract sender/URL/domain and add to whitelist
-                val extracted = extractIdentifier(text, source)
-                if (extracted != null) {
-                    ruleRepository.addToWhitelist(extracted)
-                    android.util.Log.i("FeedbackEngine", "Auto-whitelisted: $extracted")
-                }
-            }
-        }
-    }
-
-    private fun extractIdentifier(text: String, source: String): String? {
-        return when (source) {
-            "sms" -> {
-                // Extract phone number or sender ID from SMS
-                val phonePattern = Regex("^1[3-9]\\d{9}")
-                val senderPattern = Regex("^[A-Za-z0-9]{3,11}")
-                val firstLine = text.lines().firstOrNull()?.trim() ?: return null
-                when {
-                    phonePattern.containsMatchIn(firstLine) -> phonePattern.find(firstLine)?.value
-                    senderPattern.containsMatchIn(firstLine) -> senderPattern.find(firstLine)?.value
-                    else -> null
-                }
-            }
-            "webpage" -> {
-                // Extract domain from URL
-                val urlPattern = Regex("https?://([^/\\s]+)")
-                val match = urlPattern.find(text)
-                match?.groupValues?.get(1)?.lowercase()
-            }
-            "domain" -> {
-                // Direct domain
-                text.trim().lowercase().takeIf { it.isNotBlank() && it.contains('.') }
-            }
-            else -> null
-        }
+    suspend fun isWhitelisted(text: String): Boolean {
+        val textHash = computeTextHash(text)
+        val feedback = feedbackDao.getByTextHash(textHash)
+        return feedback?.label == FeedbackLabel.FALSE_POSITIVE
     }
 
     suspend fun queryFeedback(text: String, topK: Int = 10): FeedbackQueryResult {
         val recentFeedback = feedbackDao.getRecentFeedbackSync(maxFeedbackCount)
         if (recentFeedback.isEmpty()) return FeedbackQueryResult(0f, 0, 0)
 
-        val tokens = tokenize(text)
-        val scoredFeedback = recentFeedback.map { fb ->
-            val fbTokens = tokenize(fb.textHash)
-            val overlap = tokens.intersect(fbTokens.toSet()).size
-            Pair(fb, overlap)
-        }.filter { it.second > 0 }
-            .sortedByDescending { it.second }
+        val tokens = tokenize(text).toSet()
+        if (tokens.isEmpty()) return FeedbackQueryResult(0f, 0, 0)
+
+        val scoredFeedback = recentFeedback.mapNotNull { fb ->
+            val fbTokens = fb.tokens.split(" ").toSet()
+            val overlap = tokens.intersect(fbTokens).size
+            if (overlap > 0) Pair(fb, overlap) else null
+        }.sortedByDescending { it.second }
             .take(topK)
 
         if (scoredFeedback.isEmpty()) return FeedbackQueryResult(0f, 0, 0)
@@ -117,9 +80,8 @@ class FeedbackEngine(
     private suspend fun enforceLimit() {
         val total = feedbackDao.getTotalCount()
         if (total > maxFeedbackCount) {
-            // Delete oldest entries beyond limit
             val excess = total - maxFeedbackCount
-            val oldest = feedbackDao.getRecentFeedbackSync(total).takeLast(excess)
+            val oldest = feedbackDao.getOldestFeedback(excess)
             oldest.forEach { fb ->
                 feedbackDao.deleteById(fb.id)
             }
@@ -127,19 +89,54 @@ class FeedbackEngine(
     }
 
     private fun computeTextHash(text: String): String {
-        val tokens = tokenize(text)
-        return tokens.take(50).joinToString("")
+        val md = MessageDigest.getInstance("MD5")
+        val digest = md.digest(text.toByteArray(Charsets.UTF_8))
+        return digest.joinToString("") { "%02x".format(it) }
     }
 
-    private fun tokenize(text: String): List<String> {
-        val tokens = mutableListOf<String>()
-        for (ch in text) {
-            when {
-                ch in '\u4e00'..'\u9fff' -> tokens.add(ch.toString())
-                ch.isLetterOrDigit() -> tokens.add(ch.lowercaseChar().toString())
+    companion object {
+        private val CHINESE_RANGE = '\u4e00'..'\u9fff'
+
+        fun tokenize(text: String): List<String> {
+            val tokens = mutableListOf<String>()
+            val chars = mutableListOf<Char>()
+
+            for (ch in text) {
+                when {
+                    ch in CHINESE_RANGE -> {
+                        chars.add(ch)
+                    }
+                    ch.isLetterOrDigit() -> {
+                        chars.add(ch.lowercaseChar())
+                    }
+                    else -> {
+                        if (chars.isNotEmpty()) {
+                            addNgramTokens(chars, tokens)
+                            chars.clear()
+                        }
+                    }
+                }
+            }
+            if (chars.isNotEmpty()) {
+                addNgramTokens(chars, tokens)
+            }
+
+            return tokens
+        }
+
+        private fun addNgramTokens(chars: List<Char>, tokens: MutableList<String>) {
+            val str = chars.joinToString("")
+            if (str.length <= 2) {
+                tokens.add(str)
+            } else {
+                for (i in 0 until str.length - 1) {
+                    tokens.add(str.substring(i, i + 2))
+                }
+                for (i in 0 until str.length - 2) {
+                    tokens.add(str.substring(i, i + 3))
+                }
             }
         }
-        return tokens
     }
 
     data class FeedbackQueryResult(
