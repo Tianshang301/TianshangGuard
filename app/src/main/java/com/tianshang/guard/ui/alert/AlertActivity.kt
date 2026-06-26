@@ -33,6 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
 import com.tianshang.guard.R
+import com.tianshang.guard.core.feedback.FeedbackEngine
+import com.tianshang.guard.core.calibration.ThresholdCalibrator
+import com.tianshang.guard.data.local.database.FeedbackLabel
 import com.tianshang.guard.ui.theme.DeepNavy
 import com.tianshang.guard.ui.theme.GuardRed
 import com.tianshang.guard.ui.theme.OnSurfaceDark
@@ -49,6 +52,8 @@ import com.tianshang.guard.data.repository.AlertRepository
 class AlertActivity : ComponentActivity(), KoinComponent {
 
     private val alertRepository: AlertRepository by inject()
+    private val feedbackEngine: FeedbackEngine by inject()
+    private val thresholdCalibrator: ThresholdCalibrator by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,6 +62,7 @@ class AlertActivity : ComponentActivity(), KoinComponent {
         val url = intent.getStringExtra("url")
         val smsSender = intent.getStringExtra("sms_sender")
         val smsBody = intent.getStringExtra("sms_body")
+        val riskLevel = intent.getStringExtra("risk_level")
         setContent {
             TianshangGuardTheme {
                 when (alertType) {
@@ -64,7 +70,8 @@ class AlertActivity : ComponentActivity(), KoinComponent {
                     "PHISHING_PAGE" -> PhishingAlert(
                         url = url ?: "",
                         onDismiss = { finish() },
-                        onReturn = { finish() }
+                        onReturn = { finish() },
+                        onFeedback = { label -> submitFeedback(url ?: "", riskLevel ?: "SUSPICIOUS", label, "webpage") }
                     )
                     "SUSPICIOUS_DOMAIN" -> SuspiciousDomainAlert(
                         domain = domain ?: "unknown",
@@ -73,12 +80,23 @@ class AlertActivity : ComponentActivity(), KoinComponent {
                     "SMS_PHISHING" -> SmsPhishingAlert(
                         sender = smsSender ?: "unknown",
                         body = smsBody ?: "",
-                        onDismiss = { finish() }
+                        onDismiss = { finish() },
+                        onFeedback = { label -> submitFeedback(smsBody ?: "", riskLevel ?: "SUSPICIOUS", label, "sms") }
                     )
                     else -> BlockedAlert(domain = domain ?: "unknown")
                 }
             }
         }
+    }
+
+    private fun submitFeedback(text: String, riskLevel: String, label: FeedbackLabel, source: String) {
+        val modelScore = when (riskLevel) {
+            "DANGEROUS" -> 0.8f
+            "SUSPICIOUS" -> 0.3f
+            else -> 0.1f
+        }
+        feedbackEngine.recordFeedback(text, modelScore, label, source)
+        thresholdCalibrator.recordFeedback(modelScore, label)
     }
 }
 
@@ -105,7 +123,7 @@ fun ScreenShareAlert(onDismiss: () -> Unit) {
 }
 
 @Composable
-fun PhishingAlert(url: String, onDismiss: () -> Unit, onReturn: () -> Unit) {
+fun PhishingAlert(url: String, onDismiss: () -> Unit, onReturn: () -> Unit, onFeedback: (FeedbackLabel) -> Unit = {}) {
     Box(modifier = Modifier.fillMaxSize().background(DeepNavy), contentAlignment = Alignment.Center) {
         Card(modifier = Modifier.fillMaxWidth().padding(24.dp), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = SurfaceDark)) {
             Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -127,6 +145,15 @@ fun PhishingAlert(url: String, onDismiss: () -> Unit, onReturn: () -> Unit) {
                     }
                     Button(onClick = onReturn, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = GuardRed)) {
                         Text(stringResource(R.string.button_return))
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = { onFeedback(FeedbackLabel.FALSE_POSITIVE); onDismiss() }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = SurfaceVariantDark)) {
+                        Text(stringResource(R.string.feedback_false_positive), color = OnSurfaceDark)
+                    }
+                    Button(onClick = { onFeedback(FeedbackLabel.PHISHING); onDismiss() }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = GuardRed)) {
+                        Text(stringResource(R.string.feedback_confirm_phishing))
                     }
                 }
             }
@@ -163,7 +190,7 @@ fun BlockedAlert(domain: String) {
 }
 
 @Composable
-fun SmsPhishingAlert(sender: String, body: String, onDismiss: () -> Unit) {
+fun SmsPhishingAlert(sender: String, body: String, onDismiss: () -> Unit, onFeedback: (FeedbackLabel) -> Unit = {}) {
     Box(modifier = Modifier.fillMaxSize().background(DeepNavy), contentAlignment = Alignment.Center) {
         Card(modifier = Modifier.fillMaxWidth().padding(24.dp), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = SurfaceDark)) {
             Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -186,8 +213,13 @@ fun SmsPhishingAlert(sender: String, body: String, onDismiss: () -> Unit) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(stringResource(R.string.alert_sms_phishing_message), style = MaterialTheme.typography.bodySmall, color = GuardRed, textAlign = TextAlign.Center)
                 Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = GuardRed)) {
-                    Text(stringResource(R.string.button_acknowledge), fontWeight = FontWeight.Bold)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = { onFeedback(FeedbackLabel.FALSE_POSITIVE); onDismiss() }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = SurfaceVariantDark)) {
+                        Text(stringResource(R.string.feedback_false_positive), color = OnSurfaceDark)
+                    }
+                    Button(onClick = { onFeedback(FeedbackLabel.PHISHING); onDismiss() }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = GuardRed)) {
+                        Text(stringResource(R.string.feedback_confirm_phishing))
+                    }
                 }
             }
         }

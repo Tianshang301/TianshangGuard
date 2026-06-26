@@ -3,8 +3,7 @@ package com.tianshang.guard
 import android.app.Application
 import com.tianshang.guard.core.ml.MlEngine
 import com.tianshang.guard.core.ml.ModelType
-import com.tianshang.guard.data.local.database.DomainCategory
-import com.tianshang.guard.data.local.database.DomainEntity
+import com.tianshang.guard.core.retrieval.KnowledgeBase
 import com.tianshang.guard.data.repository.RuleRepository
 import com.tianshang.guard.di.appModule
 import org.json.JSONArray
@@ -12,9 +11,12 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 import org.koin.java.KoinJavaComponent.get
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.runBlocking
 
 class GuardApplication : Application() {
+
+    private val modelsLoading = AtomicBoolean(false)
 
     override fun onCreate() {
         super.onCreate()
@@ -32,27 +34,52 @@ class GuardApplication : Application() {
         try {
             val mlEngine: MlEngine = get(MlEngine::class.java)
 
-            // Japanese version: load URL and Japanese models only
-            val urlModelFile = File(cacheDir, "url_phishing.onnx")
-            if (!urlModelFile.exists()) {
-                assets.open("model/url_phishing.onnx").use { input ->
-                    urlModelFile.outputStream().use { output -> input.copyTo(output) }
-                }
-            }
-            mlEngine.loadModel(urlModelFile.absolutePath, ModelType.URL)
+            // URL model: load immediately (VPN needs it)
+            val urlModelFile = extractModelToCache("url_phishing.onnx")
+            mlEngine.loadModel(urlModelFile, ModelType.URL)
 
-            val japaneseModelFile = File(cacheDir, "japanese_phishing.onnx")
-            if (!japaneseModelFile.exists()) {
-                assets.open("model/japanese_phishing.onnx").use { input ->
-                    japaneseModelFile.outputStream().use { output -> input.copyTo(output) }
-                }
-            }
-            mlEngine.loadModel(japaneseModelFile.absolutePath, ModelType.JAPANESE)
+            android.util.Log.i("GuardApp", "Unified: loaded URL model, loading others in background")
 
-            android.util.Log.i("GuardApp", "Japanese version: loaded URL, JAPANESE models")
+            // Load BM25 knowledge base
+            val knowledgeBase: KnowledgeBase = get(KnowledgeBase::class.java)
+            knowledgeBase.loadAsync()
+
+            // Load remaining models in background thread
+            Thread({
+                if (modelsLoading.compareAndSet(false, true)) {
+                    try {
+                        // Chinese + SMS models
+                        val chineseModelFile = extractModelToCache("chinese_phishing.onnx")
+                        mlEngine.loadModel(chineseModelFile, ModelType.CHINESE)
+
+                        val smsModelFile = extractModelToCache("sms_phishing.onnx")
+                        mlEngine.loadModel(smsModelFile, ModelType.SMS)
+
+                        // English model
+                        val englishModelFile = extractModelToCache("english_phishing.onnx")
+                        mlEngine.loadModel(englishModelFile, ModelType.ENGLISH)
+
+                        android.util.Log.i("GuardApp", "Unified: loaded CHINESE, SMS, ENGLISH models")
+                    } catch (e: Exception) {
+                        android.util.Log.e("GuardApp", "Failed to load models in background", e)
+                    } finally {
+                        modelsLoading.set(false)
+                    }
+                }
+            }, "ModelLoader").start()
         } catch (e: Exception) {
-            android.util.Log.e("GuardApp", "Failed to load ONNX model", e)
+            android.util.Log.e("GuardApp", "Failed to load URL model", e)
         }
+    }
+
+    private fun extractModelToCache(modelName: String): String {
+        val modelFile = File(cacheDir, modelName)
+        if (!modelFile.exists()) {
+            assets.open("model/$modelName").use { input ->
+                modelFile.outputStream().use { output -> input.copyTo(output) }
+            }
+        }
+        return modelFile.absolutePath
     }
 
     private fun loadBuiltinRules() {

@@ -2,15 +2,18 @@ package com.tianshang.guard.di
 
 import com.tianshang.guard.core.alert.AlertEngine
 import com.tianshang.guard.core.alert.TieredAlertEngine
+import com.tianshang.guard.core.calibration.ThresholdCalibrator
 import com.tianshang.guard.core.dns.DnsEngine
 import com.tianshang.guard.core.dns.HomographDetector
 import com.tianshang.guard.core.dns.LocalDnsEngine
+import com.tianshang.guard.core.feedback.FeedbackEngine
 import com.tianshang.guard.core.ml.MlEngine
 import com.tianshang.guard.core.ml.MlEngineWithFallback
 import com.tianshang.guard.core.ml.OnnxMlEngine
 import com.tianshang.guard.core.ml.RuleBasedEngine
 import com.tianshang.guard.core.monitor.RemoteConfigProvider
 import com.tianshang.guard.core.monitor.ScreenShareMonitor
+import com.tianshang.guard.core.retrieval.KnowledgeBase
 import com.tianshang.guard.core.telemetry.PerformanceTracer
 import com.tianshang.guard.data.local.GuardPreferences
 import com.tianshang.guard.data.local.security.EncryptedDatabaseProvider
@@ -33,6 +36,7 @@ val appModule = module {
     single { get<EncryptedDatabaseProvider>().createDatabase() }
     single { get<com.tianshang.guard.data.local.database.GuardDatabase>().domainDao() }
     single { get<com.tianshang.guard.data.local.database.GuardDatabase>().alertDao() }
+    single { get<com.tianshang.guard.data.local.database.GuardDatabase>().feedbackDao() }
 
     single { GuardPreferences(androidContext()) }
     single { RuleRepository(get()) }
@@ -63,9 +67,12 @@ val appModule = module {
     single<DnsEngine> { LocalDnsEngine(get(), get(), get(), get()) }
     single { ScreenShareMonitor(androidContext(), get(), get()) }
 
+    single { KnowledgeBase(androidContext()) }
+    single { FeedbackEngine(get(), get()) }
+    single { ThresholdCalibrator(androidContext(), get()) }
     single { OnnxMlEngine() }
     single { RuleBasedEngine() }
-    single<MlEngine> { MlEngineWithFallback(get(), get(), get()) }
+    single<MlEngine> { MlEngineWithFallback(get(), get(), get(), get(), get()) }
 
     single { AnalyzeSmsUseCase(get()) }
 

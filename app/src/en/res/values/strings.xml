@@ -136,6 +136,10 @@
     <!-- Model Disclaimer -->
     <string name="model_disclaimer">AI analysis is for reference only. Results may have errors. Please stay vigilant and use your best judgment.</string>
 
+    <!-- Feedback -->
+    <string name="feedback_false_positive">False Positive</string>
+    <string name="feedback_confirm_phishing">Confirm Phishing</string>
+
     <!-- Report Screen -->
     <string name="report_screen_title">Report</string>
     <string name="report_screen_subtitle">Submit suspicious domains to help us improve protection</string>
