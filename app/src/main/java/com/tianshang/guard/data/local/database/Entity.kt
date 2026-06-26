@@ -38,3 +38,18 @@ data class AlertEntity(
     val riskLevel: String?,
     val userAction: String?
 )
+
+enum class FeedbackLabel {
+    PHISHING,
+    FALSE_POSITIVE
+}
+
+@Entity(tableName = "user_feedback")
+data class FeedbackEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val timestamp: Long = System.currentTimeMillis(),
+    val textHash: String,
+    val modelScore: Float,
+    val label: FeedbackLabel,
+    val source: String
+)

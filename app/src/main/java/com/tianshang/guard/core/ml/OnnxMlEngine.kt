@@ -93,10 +93,6 @@ class OnnxMlEngine : MlEngine {
     }
 
     private fun detectLanguage(text: String): ModelType {
-        val hasHiragana = text.any { it in '\u3040'..'\u309F' }
-        val hasKatakana = text.any { it in '\u30A0'..'\u30FF' }
-        if (hasHiragana || hasKatakana) return ModelType.JAPANESE
-
         val hasChinese = text.any { it in '\u4E00'..'\u9FFF' }
         if (hasChinese) return ModelType.CHINESE
 

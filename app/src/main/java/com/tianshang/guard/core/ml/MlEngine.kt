@@ -4,7 +4,6 @@ enum class ModelType {
     URL,
     CHINESE,
     ENGLISH,
-    JAPANESE,
     SMS
 }
 

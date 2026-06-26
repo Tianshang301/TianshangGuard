@@ -3,6 +3,7 @@ package com.tianshang.guard
 import android.app.Application
 import com.tianshang.guard.core.ml.MlEngine
 import com.tianshang.guard.core.ml.ModelType
+import com.tianshang.guard.core.retrieval.KnowledgeBase
 import com.tianshang.guard.data.local.database.DomainCategory
 import com.tianshang.guard.data.local.database.DomainEntity
 import com.tianshang.guard.data.repository.RuleRepository
@@ -58,6 +59,10 @@ class GuardApplication : Application() {
             mlEngine.loadModel(smsModelFile.absolutePath, ModelType.SMS)
 
             android.util.Log.i("GuardApp", "Chinese version: loaded URL, CHINESE, SMS models")
+
+            // Load BM25 knowledge base
+            val knowledgeBase: KnowledgeBase = get(KnowledgeBase::class.java)
+            knowledgeBase.loadAsync()
         } catch (e: Exception) {
             android.util.Log.e("GuardApp", "Failed to load ONNX model", e)
         }
