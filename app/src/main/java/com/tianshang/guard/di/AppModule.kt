@@ -80,7 +80,7 @@ val appModule = module {
     single { FeatureBasedPredictor(get()) }
 
     single { KnowledgeBase(androidContext()) }
-    single { FeedbackEngine(get(), get(), get()) }
+    single { FeedbackEngine(get(), get(), get(), get()) }
     single { ThresholdCalibrator(androidContext(), get()) }
     single { OnnxMlEngine(androidContext()) }
     single { RuleBasedEngine(androidContext()) }
