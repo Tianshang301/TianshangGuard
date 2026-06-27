@@ -19,7 +19,7 @@ class FeatureExtractor {
 
     private val moneySymbols = listOf("$", "€", "£", "¥", "₹", "₽", "₩")
     private val emojiPattern = Regex("[\\x{1F600}-\\x{1F64F}\\x{1F300}-\\x{1F5FF}\\x{1F680}-\\x{1F6FF}\\x{1F1E0}-\\x{1F1FF}\\x{2702}-\\x{27B0}\\x{24C2}-\\x{1F251}]")
-    private val ipPattern = Regex("\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b")
+    private val ipPattern = Regex("\\b(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\b")
     private val urlPattern = Regex("https?://[^\\s]+")
 
     fun extractFeatures(text: String): FeatureVector {

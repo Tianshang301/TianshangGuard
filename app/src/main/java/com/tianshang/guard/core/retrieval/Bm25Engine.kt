@@ -16,8 +16,9 @@ class Bm25Engine {
 
     // Dynamic feedback index for runtime updates
     private val feedbackIndex = ConcurrentHashMap<String, MutableList<Posting>>()
-    private var feedbackDocCount = 0
+    @Volatile private var feedbackDocCount = 0
     private val maxFeedbackDocs = 2000
+    private val feedbackLock = Any()
 
     data class Posting(val docId: Int, val score: Int)
     data class RetrievalResult(val phishingRatio: Float, val topK: Int, val matchCount: Int)
@@ -45,7 +46,7 @@ class Bm25Engine {
                 val token = String(tokenBytes, Charsets.UTF_8)
 
                 val postingsCount = buffer.int
-                if (postingsCount <= 0 || buffer.remaining() < postingsCount * 6) break
+                if (postingsCount <= 0 || postingsCount > 100000 || buffer.remaining() < postingsCount.toLong() * 6) break
                 val postings = mutableListOf<Posting>()
                 for (i in 0 until postingsCount) {
                     val docId = buffer.int
@@ -67,18 +68,21 @@ class Bm25Engine {
     /**
      * Add a feedback document to the dynamic index.
      * Uses a separate feedback index to avoid modifying the static index.
+     * Thread-safe: synchronized to prevent race conditions.
      */
     fun addFeedbackDocument(text: String, isPhishing: Boolean) {
-        if (feedbackDocCount >= maxFeedbackDocs) return
+        synchronized(feedbackLock) {
+            if (feedbackDocCount >= maxFeedbackDocs) return
 
-        val docId = docCount + feedbackDocCount
-        val tokens = tokenize(text)
-        val score = if (isPhishing) 100 else 10
+            val docId = docCount + feedbackDocCount
+            val tokens = tokenize(text)
+            val score = if (isPhishing) 100 else 10
 
-        for (token in tokens) {
-            feedbackIndex.getOrPut(token) { mutableListOf() }.add(Posting(docId, score))
+            for (token in tokens) {
+                feedbackIndex.getOrPut(token) { mutableListOf() }.add(Posting(docId, score))
+            }
+            feedbackDocCount++
         }
-        feedbackDocCount++
     }
 
     fun query(text: String, topK: Int = 10): RetrievalResult {

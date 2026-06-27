@@ -5,11 +5,12 @@ import ai.onnxruntime.OrtSession
 import ai.onnxruntime.OnnxTensor
 import android.content.Context
 import com.tianshang.guard.core.util.SecureLog
+import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern
 
 class OnnxMlEngine(private val context: Context) : MlEngine {
 
-    private val sessions = mutableMapOf<ModelType, OrtSession>()
+    private val sessions = ConcurrentHashMap<ModelType, OrtSession>()
     private val urlPattern = Pattern.compile("https?://[^\\s]+")
     
     // BPE tokenizer with fallback to byte tokenizer
