@@ -83,8 +83,9 @@ class DohClient(private val client: OkHttpClient) {
      * Resolve DNS query using traditional UDP (fallback).
      */
     private fun resolveViaUdp(dnsPayload: ByteArray): ByteArray? {
+        // BUGFIX: Use try-finally to ensure socket is closed on exception
+        val socket = java.net.DatagramSocket()
         return try {
-            val socket = java.net.DatagramSocket()
             socket.soTimeout = UDP_FALLBACK_TIMEOUT_MS.toInt()
             val request = java.net.DatagramPacket(
                 dnsPayload,
@@ -96,11 +97,14 @@ class DohClient(private val client: OkHttpClient) {
             val responseBuf = ByteArray(1500)
             val responsePkt = java.net.DatagramPacket(responseBuf, responseBuf.size)
             socket.receive(responsePkt)
-            socket.close()
             responseBuf.copyOf(responsePkt.length)
         } catch (e: Exception) {
             SecureLog.w("DohClient", "UDP fallback failed", e)
             null
+        } finally {
+            try {
+                socket.close()
+            } catch (_: Exception) {}
         }
     }
 }

@@ -1,7 +1,7 @@
 package com.tianshang.guard.core.dns
 
 sealed class DnsResult {
-    data class Allow(val ip: String) : DnsResult()
+    data object Allow : DnsResult()
     data class Block(val reason: BlockReason) : DnsResult()
     data class Unknown(val riskScore: Float) : DnsResult()
 }

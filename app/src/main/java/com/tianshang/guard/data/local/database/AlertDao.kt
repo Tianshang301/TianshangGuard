@@ -13,26 +13,31 @@ interface AlertDao {
     @Query("SELECT * FROM alerts ORDER BY timestamp DESC LIMIT :limit")
     fun getRecentAlerts(limit: Int): Flow<List<AlertEntity>>
 
+    // BUGFIX: Changed to suspend fun to avoid main thread queries
     @Query("SELECT COUNT(*) FROM alerts WHERE type = 'BLACKLIST_BLOCKED'")
-    fun getBlockedCount(): Int
+    suspend fun getBlockedCount(): Int
 
+    // BUGFIX: Changed to suspend fun to avoid main thread queries
     @Query("SELECT COUNT(*) FROM alerts WHERE type = :type")
-    fun getCountByType(type: String): Int
+    suspend fun getCountByType(type: String): Int
 
     @Query("SELECT COUNT(*) FROM alerts WHERE type = :type")
     fun getCountByTypeFlow(type: String): Flow<Int>
 
+    // BUGFIX: Changed to suspend fun to avoid main thread queries
     @Query("SELECT COUNT(*) FROM alerts WHERE type = :type AND timestamp >= :since")
-    fun getCountByTypeSince(type: String, since: Long): Int
+    suspend fun getCountByTypeSince(type: String, since: Long): Int
 
     @Query("SELECT COUNT(*) FROM alerts WHERE type = :type AND timestamp >= :since")
     fun getCountByTypeSinceFlow(type: String, since: Long): Flow<Int>
 
+    // BUGFIX: Changed to suspend fun to avoid main thread queries
     @Query("SELECT * FROM alerts ORDER BY timestamp DESC LIMIT :limit")
-    fun getRecentAlertsSync(limit: Int): List<AlertEntity>
+    suspend fun getRecentAlertsSync(limit: Int): List<AlertEntity>
 
+    // BUGFIX: Changed to suspend fun to avoid main thread queries
     @Query("SELECT * FROM alerts ORDER BY timestamp ASC LIMIT :limit")
-    fun getAlertsAscSync(limit: Int): List<AlertEntity>
+    suspend fun getAlertsAscSync(limit: Int): List<AlertEntity>
 
     @Query("DELETE FROM alerts")
     suspend fun clearAll()

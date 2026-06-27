@@ -42,7 +42,6 @@ class EncryptedDatabaseProvider(private val context: Context) {
         )
             .openHelperFactory(factory)
             .fallbackToDestructiveMigration()
-            .allowMainThreadQueries() // TODO: Remove after migrating all DAO calls to suspend
             .build()
     }
 

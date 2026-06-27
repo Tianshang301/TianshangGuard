@@ -24,25 +24,22 @@ class LocalDnsEngine(
     private var cachedKnownDomains: List<String> = emptyList()
     private var lastDomainCacheUpdate = 0L
     private val domainCacheTtl = 60_000L
-    @Volatile private var initialized = false // LDE-03: Ready flag
+    @Volatile private var initialized = false
 
     override fun resolve(domain: String): DnsResult {
-        // LDE-03: Block until initialization is complete
         if (!initialized) {
             return DnsResult.Block(BlockReason.SUSPICIOUS)
         }
 
-        // LDE-02: Whitelist check but still run homograph detection
-        val isWhitelisted = ruleRepository.isWhitelisted(domain)
+        // BUGFIX: Use runBlocking to call suspend DAO functions
+        val isWhitelisted = runBlocking { ruleRepository.isWhitelisted(domain) }
         if (isWhitelisted) {
-            // Even whitelisted domains get homograph check
             val homographResult = homographDetector.detect(domain)
             if (homographResult is HomographResult.Detected) {
                 alertEngine.showSuspiciousDomainWarning(domain, 0.95f)
-                // Don't block, but warn user
             }
             alertEngine.notifyVisited(domain)
-            return DnsResult.Allow(resolveUpstream(domain))
+            return DnsResult.Allow
         }
 
         val homographResult = homographDetector.detect(domain)
@@ -52,7 +49,8 @@ class LocalDnsEngine(
         }
 
         if (bloomFilter.mightContain(domain)) {
-            if (ruleRepository.isBlacklisted(domain)) {
+            val isBlacklisted = runBlocking { ruleRepository.isBlacklisted(domain) }
+            if (isBlacklisted) {
                 alertEngine.notifyBlocked(domain, BlockReason.BLACKLIST)
                 return DnsResult.Block(BlockReason.BLACKLIST)
             }
@@ -87,11 +85,10 @@ class LocalDnsEngine(
     private fun calculateDomainSimilarity(domain: String): Float {
         val now = System.currentTimeMillis()
         if (now - lastDomainCacheUpdate > domainCacheTtl) {
-            cachedKnownDomains = ruleRepository.getKnownDomains()
+            cachedKnownDomains = runBlocking { ruleRepository.getKnownDomains() }
             lastDomainCacheUpdate = now
         }
         if (cachedKnownDomains.isEmpty()) return 0f
-        // BUGFIX: Pre-filter by length difference to avoid O(N*M) on all domains
         val maxLenDiff = 3
         return cachedKnownDomains
             .filter { kotlin.math.abs(it.length - domain.length) <= maxLenDiff }
@@ -122,13 +119,8 @@ class LocalDnsEngine(
         return costs[b.length]
     }
 
-    private fun resolveUpstream(domain: String): String {
-        return "1.1.1.1"
-    }
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // LDE-03: Synchronous initialization to prevent protection window
     override fun start() {
         runBlocking {
             val allDomains = ruleRepository.getKnownDomains()
