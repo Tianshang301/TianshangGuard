@@ -7,7 +7,7 @@ data class RemoteConfig(
 
 class RemoteConfigProvider {
 
-    var screenShareApps: Set<String> = setOf(
+    @Volatile var screenShareApps: Set<String> = setOf(
         "com.teamviewer.teamviewer.market",
         "com.anydesk.adcontrol",
         "com.microsoft.rdc.androidx",
@@ -19,7 +19,7 @@ class RemoteConfigProvider {
         "com.remotepc.remote",
         "com.xtralogic.remoteclient"
     )
-    var bankApps: Set<String> = setOf(
+    @Volatile var bankApps: Set<String> = setOf(
         "com.eg.android.AlipayGphone",
         "com.tencent.mm",
         "com.tencent.mtt",

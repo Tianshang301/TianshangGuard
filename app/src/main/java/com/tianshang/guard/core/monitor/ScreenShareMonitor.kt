@@ -18,7 +18,7 @@ class ScreenShareMonitor(
             as UsageStatsManager
 
     private val handler = Handler(Looper.getMainLooper())
-    private var isMonitoring = false
+    @Volatile private var isMonitoring = false
 
     fun startMonitoring() {
         if (isMonitoring) return

@@ -188,12 +188,16 @@ class Bm25Engine {
         inflater.setInput(data)
         val outputStream = java.io.ByteArrayOutputStream()
         val buffer = ByteArray(4096)
+        var zeroCount = 0
         while (!inflater.finished()) {
             val count = inflater.inflate(buffer)
             if (count == 0) {
                 if (inflater.needsInput() || inflater.needsDictionary()) break
+                // M-17: Safety valve to prevent infinite loop on malformed data
+                if (++zeroCount > 100) break
                 continue
             }
+            zeroCount = 0
             outputStream.write(buffer, 0, count)
         }
         inflater.end()

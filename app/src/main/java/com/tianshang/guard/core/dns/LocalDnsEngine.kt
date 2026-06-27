@@ -129,15 +129,19 @@ class LocalDnsEngine(
     override fun start() {
         runBlocking {
             val allDomains = ruleRepository.getKnownDomains()
-            bloomFilter = AdaptiveBloomFilter(
+            val newFilter = AdaptiveBloomFilter(
                 expectedItems = if (allDomains.size * 2 > 100_000) allDomains.size * 2 else 100_000,
                 targetFpp = 0.001
             )
-            allDomains.forEach { bloomFilter.add(it) }
-            cachedKnownDomains = allDomains
-            lastDomainCacheUpdate = System.currentTimeMillis()
-            rebuildBkTree()
-            initialized = true
+            allDomains.forEach { newFilter.add(it) }
+            // M-16: Atomic swap to prevent partial initialization
+            synchronized(cacheLock) {
+                bloomFilter = newFilter
+                cachedKnownDomains = allDomains
+                lastDomainCacheUpdate = System.currentTimeMillis()
+                rebuildBkTree()
+                initialized = true
+            }
         }
     }
 
