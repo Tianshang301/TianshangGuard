@@ -7,7 +7,15 @@
       "hasThreatKeywords": true,
       "hasPhoneNumber": false,
       "urlCount": 0,
-      "language": "CHINESE"
+      "language": "CHINESE",
+      "textLength": 25,
+      "digitRatio": 0.0,
+      "chineseCharRatio": 1.0,
+      "exclamationCount": 0,
+      "questionCount": 0,
+      "urgencyWordCount": 0,
+      "threatWordCount": 3,
+      "financialWordCount": 2
     }
   },
   {
@@ -18,7 +26,16 @@
       "hasThreatKeywords": false,
       "hasPhoneNumber": false,
       "urlCount": 1,
-      "language": "CHINESE"
+      "language": "CHINESE",
+      "textLength": 30,
+      "digitRatio": 0.0,
+      "chineseCharRatio": 0.7,
+      "exclamationCount": 0,
+      "questionCount": 0,
+      "urgencyWordCount": 2,
+      "threatWordCount": 0,
+      "financialWordCount": 1
+    }
   },
   {
     "text": "联系我：13800138000，领取您的奖金",
@@ -28,7 +45,15 @@
       "hasThreatKeywords": false,
       "hasPhoneNumber": true,
       "urlCount": 0,
-      "language": "CHINESE"
+      "language": "CHINESE",
+      "textLength": 17,
+      "digitRatio": 0.59,
+      "chineseCharRatio": 0.35,
+      "exclamationCount": 0,
+      "questionCount": 0,
+      "urgencyWordCount": 0,
+      "threatWordCount": 0,
+      "financialWordCount": 0
     }
   },
   {
@@ -39,7 +64,15 @@
       "hasThreatKeywords": false,
       "hasPhoneNumber": false,
       "urlCount": 1,
-      "language": "ENGLISH"
+      "language": "ENGLISH",
+      "textLength": 88,
+      "digitRatio": 0.0,
+      "chineseCharRatio": 0.0,
+      "exclamationCount": 0,
+      "questionCount": 0,
+      "urgencyWordCount": 1,
+      "threatWordCount": 0,
+      "financialWordCount": 0
     }
   },
   {
@@ -50,7 +83,15 @@
       "hasThreatKeywords": false,
       "hasPhoneNumber": false,
       "urlCount": 0,
-      "language": "CHINESE"
+      "language": "CHINESE",
+      "textLength": 26,
+      "digitRatio": 0.19,
+      "chineseCharRatio": 0.73,
+      "exclamationCount": 0,
+      "questionCount": 0,
+      "urgencyWordCount": 0,
+      "threatWordCount": 0,
+      "financialWordCount": 3
     }
   },
   {
@@ -61,7 +102,15 @@
       "hasThreatKeywords": false,
       "hasPhoneNumber": false,
       "urlCount": 0,
-      "language": "CHINESE"
+      "language": "CHINESE",
+      "textLength": 20,
+      "digitRatio": 0.0,
+      "chineseCharRatio": 0.95,
+      "exclamationCount": 0,
+      "questionCount": 0,
+      "urgencyWordCount": 0,
+      "threatWordCount": 0,
+      "financialWordCount": 0
     }
   },
   {
@@ -72,7 +121,15 @@
       "hasThreatKeywords": false,
       "hasPhoneNumber": true,
       "urlCount": 0,
-      "language": "CHINESE"
+      "language": "CHINESE",
+      "textLength": 22,
+      "digitRatio": 0.18,
+      "chineseCharRatio": 0.59,
+      "exclamationCount": 1,
+      "questionCount": 0,
+      "urgencyWordCount": 0,
+      "threatWordCount": 0,
+      "financialWordCount": 0
     }
   },
   {
@@ -83,7 +140,129 @@
       "hasThreatKeywords": false,
       "hasPhoneNumber": false,
       "urlCount": 0,
-      "language": "CHINESE"
+      "language": "CHINESE",
+      "textLength": 21,
+      "digitRatio": 0.14,
+      "chineseCharRatio": 0.81,
+      "exclamationCount": 0,
+      "questionCount": 0,
+      "urgencyWordCount": 0,
+      "threatWordCount": 0,
+      "financialWordCount": 3
+    }
+  },
+  {
+    "text": "",
+    "expected_features": {
+      "hasFinancialKeywords": false,
+      "hasUrgencyKeywords": false,
+      "hasThreatKeywords": false,
+      "hasPhoneNumber": false,
+      "urlCount": 0,
+      "language": "CHINESE",
+      "textLength": 0,
+      "digitRatio": 0.0,
+      "chineseCharRatio": 0.0,
+      "exclamationCount": 0,
+      "questionCount": 0,
+      "urgencyWordCount": 0,
+      "threatWordCount": 0,
+      "financialWordCount": 0
+    }
+  },
+  {
+    "text": "!!!???",
+    "expected_features": {
+      "hasFinancialKeywords": false,
+      "hasUrgencyKeywords": false,
+      "hasThreatKeywords": false,
+      "hasPhoneNumber": false,
+      "urlCount": 0,
+      "language": "ENGLISH",
+      "textLength": 6,
+      "digitRatio": 0.0,
+      "chineseCharRatio": 0.0,
+      "exclamationCount": 3,
+      "questionCount": 3,
+      "urgencyWordCount": 0,
+      "threatWordCount": 0,
+      "financialWordCount": 0
+    }
+  },
+  {
+    "text": "http://192.168.1.1/login http://phishing.com/test",
+    "expected_features": {
+      "hasFinancialKeywords": false,
+      "hasUrgencyKeywords": false,
+      "hasThreatKeywords": false,
+      "hasPhoneNumber": false,
+      "urlCount": 2,
+      "language": "ENGLISH",
+      "textLength": 50,
+      "digitRatio": 0.12,
+      "chineseCharRatio": 0.0,
+      "exclamationCount": 0,
+      "questionCount": 0,
+      "urgencyWordCount": 0,
+      "threatWordCount": 0,
+      "financialWordCount": 0
+    }
+  },
+  {
+    "text": "您的密码已过期，请立即重置！点击 http://reset-password.com",
+    "expected_features": {
+      "hasFinancialKeywords": false,
+      "hasUrgencyKeywords": true,
+      "hasThreatKeywords": false,
+      "hasPhoneNumber": false,
+      "urlCount": 1,
+      "language": "CHINESE",
+      "textLength": 29,
+      "digitRatio": 0.0,
+      "chineseCharRatio": 0.62,
+      "exclamationCount": 1,
+      "questionCount": 0,
+      "urgencyWordCount": 3,
+      "threatWordCount": 0,
+      "financialWordCount": 0
+    }
+  },
+  {
+    "text": "【公安局】您涉嫌洗钱犯罪，请配合调查，将资金转入安全账户进行清查",
+    "expected_features": {
+      "hasFinancialKeywords": true,
+      "hasUrgencyKeywords": false,
+      "hasThreatKeywords": true,
+      "hasPhoneNumber": false,
+      "urlCount": 0,
+      "language": "CHINESE",
+      "textLength": 31,
+      "digitRatio": 0.0,
+      "chineseCharRatio": 1.0,
+      "exclamationCount": 0,
+      "questionCount": 0,
+      "urgencyWordCount": 0,
+      "threatWordCount": 4,
+      "financialWordCount": 2
+    }
+  },
+  {
+    "text": "Your password has expired. Click here to reset: http://reset.com",
+    "expected_features": {
+      "hasFinancialKeywords": false,
+      "hasUrgencyKeywords": true,
+      "hasThreatKeywords": false,
+      "hasPhoneNumber": false,
+      "urlCount": 1,
+      "language": "ENGLISH",
+      "textLength": 64,
+      "digitRatio": 0.0,
+      "chineseCharRatio": 0.0,
+      "exclamationCount": 0,
+      "questionCount": 0,
+      "urgencyWordCount": 1,
+      "threatWordCount": 0,
+      "financialWordCount": 0
     }
   }
 ]
