@@ -23,10 +23,24 @@ class LocalDnsEngine(
     )
     private var cachedKnownDomains: List<String> = emptyList()
     private var lastDomainCacheUpdate = 0L
-    private val domainCacheTtl = 60_000L // 1 minute TTL
+    private val domainCacheTtl = 60_000L
+    @Volatile private var initialized = false // LDE-03: Ready flag
 
     override fun resolve(domain: String): DnsResult {
-        if (ruleRepository.isWhitelisted(domain)) {
+        // LDE-03: Block until initialization is complete
+        if (!initialized) {
+            return DnsResult.Block(BlockReason.SUSPICIOUS)
+        }
+
+        // LDE-02: Whitelist check but still run homograph detection
+        val isWhitelisted = ruleRepository.isWhitelisted(domain)
+        if (isWhitelisted) {
+            // Even whitelisted domains get homograph check
+            val homographResult = homographDetector.detect(domain)
+            if (homographResult is HomographResult.Detected) {
+                alertEngine.showSuspiciousDomainWarning(domain, 0.95f)
+                // Don't block, but warn user
+            }
             alertEngine.notifyVisited(domain)
             return DnsResult.Allow(resolveUpstream(domain))
         }
@@ -110,8 +124,9 @@ class LocalDnsEngine(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    // LDE-03: Synchronous initialization to prevent protection window
     override fun start() {
-        scope.launch {
+        runBlocking {
             val allDomains = ruleRepository.getKnownDomains()
             bloomFilter = AdaptiveBloomFilter(
                 expectedItems = if (allDomains.size * 2 > 100_000) allDomains.size * 2 else 100_000,
@@ -120,19 +135,21 @@ class LocalDnsEngine(
             allDomains.forEach { bloomFilter.add(it) }
             cachedKnownDomains = allDomains
             lastDomainCacheUpdate = System.currentTimeMillis()
+            initialized = true
         }
     }
 
     override fun stop() {
+        initialized = false
         bloomFilter = AdaptiveBloomFilter(100_000, 0.001)
     }
 
     override fun addToWhitelist(domain: String) {
-        runBlocking { ruleRepository.addToWhitelist(domain) }
+        scope.launch { ruleRepository.addToWhitelist(domain) }
     }
 
     override fun addToBlacklist(domain: String) {
-        runBlocking {
+        scope.launch {
             ruleRepository.addToBlacklist(domain)
             bloomFilter.add(domain)
         }
