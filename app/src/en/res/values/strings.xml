@@ -140,6 +140,11 @@
     <string name="feedback_false_positive">False Positive</string>
     <string name="feedback_confirm_phishing">Confirm Phishing</string>
 
+    <!-- Alert Details (v1.3.x) -->
+    <string name="alert_show_details">Show Details</string>
+    <string name="alert_hide_details">Hide Details</string>
+    <string name="alert_ml_score">ML Score: %s</string>
+
     <!-- Report Screen -->
     <string name="report_screen_title">Report</string>
     <string name="report_screen_subtitle">Submit suspicious domains to help us improve protection</string>
