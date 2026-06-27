@@ -5,9 +5,10 @@
   "test_suites": {
     "sms_detection": {
       "file": "sms_test_cases.json",
-      "total_cases": 32,
-      "phishing_cases": 21,
+      "total_cases": 40,
+      "phishing_cases": 25,
       "legitimate_cases": 11,
+      "english_cases": 4,
       "metrics": {
         "target_recall": 0.95,
         "target_precision": 0.90,
@@ -53,14 +54,22 @@
     },
     "feature_extraction": {
       "file": "feature_test_cases.json",
-      "total_cases": 8,
+      "total_cases": 14,
       "features_tested": [
         "hasFinancialKeywords",
         "hasUrgencyKeywords",
         "hasThreatKeywords",
         "hasPhoneNumber",
         "urlCount",
-        "language"
+        "language",
+        "textLength",
+        "digitRatio",
+        "chineseCharRatio",
+        "exclamationCount",
+        "questionCount",
+        "urgencyWordCount",
+        "threatWordCount",
+        "financialWordCount"
       ]
     }
   },

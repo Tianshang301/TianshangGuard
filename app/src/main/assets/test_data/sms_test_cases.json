@@ -222,5 +222,85 @@
     "label": "phishing",
     "risk_level": "DANGEROUS",
     "source": "test"
+  },
+  {
+    "sender": "Unknown",
+    "body": "Your account has been compromised. Click here to verify: http://phishing-site.com/verify",
+    "label": "phishing",
+    "risk_level": "DANGEROUS",
+    "source": "test",
+    "language": "ENGLISH"
+  },
+  {
+    "sender": "Unknown",
+    "body": "Your bank account has been frozen due to suspicious activity. Please verify your identity at http://bank-verify.com",
+    "label": "phishing",
+    "risk_level": "DANGEROUS",
+    "source": "test",
+    "language": "ENGLISH"
+  },
+  {
+    "sender": "Unknown",
+    "body": "Congratulations! You have won $10,000. Claim your prize at http://prize-winner.com",
+    "label": "phishing",
+    "risk_level": "DANGEROUS",
+    "source": "test",
+    "language": "ENGLISH"
+  },
+  {
+    "sender": "Unknown",
+    "body": "Your password has expired. Please reset it immediately at http://password-reset.com",
+    "label": "phishing",
+    "risk_level": "DANGEROUS",
+    "source": "test",
+    "language": "ENGLISH"
+  },
+  {
+    "sender": "Unknown",
+    "body": "Your Amazon order #12345 has been shipped. Track your package at https://amazon.com/track",
+    "label": "legitimate",
+    "risk_level": "SAFE",
+    "source": "test",
+    "language": "ENGLISH"
+  },
+  {
+    "sender": "Unknown",
+    "body": "Your appointment with Dr. Smith is confirmed for tomorrow at 3pm.",
+    "label": "legitimate",
+    "risk_level": "SAFE",
+    "source": "test",
+    "language": "ENGLISH"
+  },
+  {
+    "sender": "Unknown",
+    "body": "Your verification code is 123456. Do not share this code with anyone.",
+    "label": "legitimate",
+    "risk_level": "SAFE",
+    "source": "test",
+    "language": "ENGLISH"
+  },
+  {
+    "sender": "Unknown",
+    "body": "Your flight AA123 from New York to London has been delayed by 2 hours.",
+    "label": "legitimate",
+    "risk_level": "SAFE",
+    "source": "test",
+    "language": "ENGLISH"
+  },
+  {
+    "sender": "Unknown",
+    "body": "",
+    "label": "legitimate",
+    "risk_level": "SAFE",
+    "source": "test",
+    "language": "EMPTY"
+  },
+  {
+    "sender": "Unknown",
+    "body": "安全账户 验证身份 银行卡密码 转账到 退款链接 点击验证 冻结账户 法院传票",
+    "label": "phishing",
+    "risk_level": "DANGEROUS",
+    "source": "test",
+    "language": "KEYWORD_FLOOD"
   }
 ]
