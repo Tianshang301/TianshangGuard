@@ -23,25 +23,35 @@ class TieredAlertEngine(
     private val ioScope = CoroutineScope(Dispatchers.IO)
 
     private fun record(type: AlertType, domain: String? = null, url: String? = null, riskLevel: String? = null) {
-        android.util.Log.i("TieredAlert", "record: type=$type domain=$domain")
+        android.util.Log.i("TieredAlert", "record: type=$type")
         ioScope.launch {
             try {
                 alertRepository.insert(AlertEntity(type = type, domain = domain, url = url, riskLevel = riskLevel, userAction = null))
-                android.util.Log.i("TieredAlert", "insert OK: type=$type")
             } catch (e: Exception) {
                 android.util.Log.e("TieredAlert", "insert FAILED", e)
             }
         }
     }
 
+    private fun launchAlert(alertKey: String) {
+        val intent = Intent(context, AlertActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            putExtra("alert_key", alertKey)
+        }
+        context.startActivity(intent)
+    }
+
     override fun showScreenShareWarning() {
         record(AlertType.SCREEN_SHARE)
+        val key = "screen_share_${System.currentTimeMillis()}"
+        AlertDataHolder.put(key, AlertDataHolder.AlertData(
+            alertType = AlertType.SCREEN_SHARE.name,
+            level = AlertLevel.FULLSCREEN.name,
+            requireConfirm = true
+        ))
         val intent = Intent(context, AlertActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-            putExtra("alert_type", AlertType.SCREEN_SHARE.name)
-            putExtra("level", AlertLevel.FULLSCREEN.name)
-            putExtra("require_confirm", true)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+            putExtra("alert_key", key)
         }
         context.startActivity(intent)
     }
@@ -51,15 +61,15 @@ class TieredAlertEngine(
         val config = resolveAlertConfig(riskLevel)
         if (cooldownManager.isInCooldown("phishing_$url", config.cooldownSeconds)) return
 
-        val intent = Intent(context, AlertActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            putExtra("alert_type", AlertType.PHISHING_PAGE.name)
-            putExtra("url", url)
-            putExtra("risk_level", riskLevel.name)
-            putExtra("level", config.level.name)
-            putExtra("require_confirm", config.requireConfirm)
-        }
-        context.startActivity(intent)
+        val key = "phishing_${System.currentTimeMillis()}"
+        AlertDataHolder.put(key, AlertDataHolder.AlertData(
+            alertType = AlertType.PHISHING_PAGE.name,
+            url = url,
+            riskLevel = riskLevel.name,
+            level = config.level.name,
+            requireConfirm = config.requireConfirm
+        ))
+        launchAlert(key)
         cooldownManager.recordTrigger("phishing_$url")
     }
 
@@ -68,28 +78,26 @@ class TieredAlertEngine(
         val config = resolveAlertConfig(RiskLevel.SUSPICIOUS)
         if (cooldownManager.isInCooldown("domain_$domain", config.cooldownSeconds)) return
 
-        val intent = Intent(context, AlertActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            putExtra("alert_type", AlertType.SUSPICIOUS_DOMAIN.name)
-            putExtra("domain", domain)
-            putExtra("score", score)
-            putExtra("level", config.level.name)
-            putExtra("require_confirm", config.requireConfirm)
-        }
-        context.startActivity(intent)
+        val key = "domain_${System.currentTimeMillis()}"
+        AlertDataHolder.put(key, AlertDataHolder.AlertData(
+            alertType = AlertType.SUSPICIOUS_DOMAIN.name,
+            domain = domain,
+            level = config.level.name,
+            requireConfirm = config.requireConfirm
+        ))
+        launchAlert(key)
         cooldownManager.recordTrigger("domain_$domain")
     }
 
     override fun notifyBlocked(domain: String, reason: BlockReason) {
         record(AlertType.BLACKLIST_BLOCKED, domain = domain)
-        val intent = Intent(context, AlertActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            putExtra("alert_type", AlertType.BLACKLIST_BLOCKED.name)
-            putExtra("domain", domain)
-            putExtra("reason", reason.name)
-            putExtra("level", AlertLevel.BANNER.name)
-        }
-        context.startActivity(intent)
+        val key = "blocked_${System.currentTimeMillis()}"
+        AlertDataHolder.put(key, AlertDataHolder.AlertData(
+            alertType = AlertType.BLACKLIST_BLOCKED.name,
+            domain = domain,
+            level = AlertLevel.BANNER.name
+        ))
+        launchAlert(key)
     }
 
     override fun notifyVisited(domain: String) {
@@ -104,22 +112,21 @@ class TieredAlertEngine(
         record(AlertType.SMS_PHISHING, domain = sender, riskLevel = riskLevel.name)
         val config = resolveAlertConfig(riskLevel)
 
-        // Use body hash as part of cooldown key to differentiate different SMS content
         val bodyHash = body.hashCode().toString()
         val cooldownKey = "sms_${sender}_$bodyHash"
 
         if (useCooldown && cooldownManager.isInCooldown(cooldownKey, config.cooldownSeconds)) return
 
-        val intent = Intent(context, AlertActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            putExtra("alert_type", AlertType.SMS_PHISHING.name)
-            putExtra("sms_sender", sender)
-            putExtra("sms_body", body)
-            putExtra("risk_level", riskLevel.name)
-            putExtra("level", config.level.name)
-            putExtra("require_confirm", config.requireConfirm)
-        }
-        context.startActivity(intent)
+        val key = "sms_${System.currentTimeMillis()}"
+        AlertDataHolder.put(key, AlertDataHolder.AlertData(
+            alertType = AlertType.SMS_PHISHING.name,
+            smsSender = sender,
+            smsBody = body,
+            riskLevel = riskLevel.name,
+            level = config.level.name,
+            requireConfirm = config.requireConfirm
+        ))
+        launchAlert(key)
         if (useCooldown) cooldownManager.recordTrigger(cooldownKey)
     }
 
