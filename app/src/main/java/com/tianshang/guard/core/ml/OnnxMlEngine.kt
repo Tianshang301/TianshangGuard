@@ -3,33 +3,40 @@ package com.tianshang.guard.core.ml
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import ai.onnxruntime.OnnxTensor
+import android.content.Context
+import com.tianshang.guard.core.util.SecureLog
 import java.util.regex.Pattern
 
-class BertTokenizer {
-
-    fun encode(text: String, maxLength: Int): LongArray {
-        val tokens = LongArray(maxLength) { 0L }
-        tokens[0] = 101L // [CLS]
-        // BUGFIX: truncate by bytes, not characters (prevents ArrayIndexOutOfBounds for CJK)
-        val textBytes = text.encodeToByteArray().take(maxLength - 2)
-        for (i in textBytes.indices) {
-            tokens[i + 1] = textBytes[i].toLong() and 0xFF
-        }
-        tokens[minOf(textBytes.size + 1, maxLength - 1)] = 102L // [SEP]
-        return tokens
-    }
-}
-
-class OnnxMlEngine : MlEngine {
+class OnnxMlEngine(private val context: Context) : MlEngine {
 
     private val sessions = mutableMapOf<ModelType, OrtSession>()
-    private val tokenizer = BertTokenizer()
     private val urlPattern = Pattern.compile("https?://[^\\s]+")
+    
+    // BPE tokenizer with fallback to byte tokenizer
+    private val bpeTokenizer = BpeTokenizer(context)
+    private var useBpe = false
+
+    init {
+        // Try to load BPE tokenizer
+        useBpe = bpeTokenizer.load()
+        if (useBpe) {
+            SecureLog.i("OnnxMlEngine", "BPE tokenizer loaded successfully")
+        } else {
+            SecureLog.w("OnnxMlEngine", "BPE tokenizer not available, using byte tokenizer")
+        }
+    }
+
+    private fun encode(text: String, maxLength: Int = 512): LongArray {
+        return if (useBpe) {
+            bpeTokenizer.encode(text, maxLength)
+        } else {
+            ByteTokenizer.encode(text, maxLength)
+        }
+    }
 
     override fun loadModel(modelPath: String, type: ModelType) {
         val env = OrtEnvironment.getEnvironment()
         val sessionOptions = OrtSession.SessionOptions().apply {
-            // BUGFIX: NNAPI may not be available on all devices; fall back to CPU
             try { addNnapi() } catch (_: Exception) {}
             setIntraOpNumThreads(2)
         }
@@ -38,8 +45,7 @@ class OnnxMlEngine : MlEngine {
 
     fun analyzeWithModel(text: String, type: ModelType): RiskLevel {
         val session = sessions[type] ?: return RiskLevel.SAFE
-        val inputIds = tokenizer.encode(text, maxLength = 512)
-        // BUGFIX: use .use {} to release native memory (OnnxTensor + Result are AutoCloseable)
+        val inputIds = encode(text)
         OnnxTensor.createTensor(OrtEnvironment.getEnvironment(), arrayOf(inputIds)).use { inputTensor ->
             session.run(mapOf("input" to inputTensor)).use { outputs ->
                 val score = (outputs?.get(0)?.value as? FloatArray)?.firstOrNull() ?: 0f
@@ -50,7 +56,7 @@ class OnnxMlEngine : MlEngine {
 
     fun analyzeWithModelScore(text: String, type: ModelType): Float {
         val session = sessions[type] ?: return 0f
-        val inputIds = tokenizer.encode(text, maxLength = 512)
+        val inputIds = encode(text)
         OnnxTensor.createTensor(OrtEnvironment.getEnvironment(), arrayOf(inputIds)).use { inputTensor ->
             session.run(mapOf("input" to inputTensor)).use { outputs ->
                 return (outputs?.get(0)?.value as? FloatArray)?.firstOrNull() ?: 0f
@@ -73,27 +79,17 @@ class OnnxMlEngine : MlEngine {
     }
 
     fun analyzeSmsScore(text: String): Float {
-        // 1. Detect language and get text score
         val textModelType = detectLanguage(text)
         val textScore = analyzeWithModelScore(text, textModelType)
-
-        // 2. SMS specialist model (trained on FBS + ChiFraud short texts)
         val smsScore = analyzeWithModelScore(text, ModelType.SMS)
-
-        // 3. Extract URL from text
         val url = extractUrl(text)
-
-        // 4. If URL exists, also analyze with URL model
         val urlScore = if (url != null) analyzeWithModelScore(url, ModelType.URL) else 0f
-
-        // 5. Fusion: maxOf all available expert scores
         return maxOf(textScore, smsScore, urlScore)
     }
 
     private fun detectLanguage(text: String): ModelType {
         val hasChinese = text.any { it in '\u4E00'..'\u9FFF' }
         if (hasChinese) return ModelType.CHINESE
-
         return ModelType.ENGLISH
     }
 
@@ -112,7 +108,6 @@ class OnnxMlEngine : MlEngine {
     }
 
     private fun calculateEntropy(s: String): Float {
-        // BUGFIX: guard against empty string (0 length → NaN)
         if (s.isEmpty()) return 0f
         val freq = s.groupingBy { it }.eachCount()
         val len = s.length.toFloat()
@@ -128,7 +123,6 @@ class OnnxMlEngine : MlEngine {
 
     private fun ruleBasedDomainAnalysis(features: FloatArray): RiskLevel {
         val length = features[0]
-        // BUGFIX: guard against empty domain (division by zero)
         if (length == 0f) return RiskLevel.SAFE
         val entropy = features[1]
         val digitRatio = features[2] / length
