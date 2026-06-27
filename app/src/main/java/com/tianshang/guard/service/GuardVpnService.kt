@@ -40,12 +40,19 @@ class GuardVpnService : VpnService() {
 
     private val packetHandler = DnsPacketHandler()
 
-    private val dnsCache = ConcurrentHashMap<String, DnsResult>(2048)
+    // VPN-03: DNS cache with TTL and size limit
+    private data class CacheEntry(val result: DnsResult, val timestamp: Long)
+    private val dnsCache = object : LinkedHashMap<String, CacheEntry>(1024, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CacheEntry>?): Boolean {
+            return size > 2048
+        }
+    }
+    private val CACHE_TTL_MS = 300_000L // 5 minutes
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var keepaliveJob: Job? = null
     private var watchdogJob: Job? = null
-    private var lastPacketTime = 0L
+    @Volatile private var lastPacketTime = 0L // VPN-05: Thread-safe
     private val handlerThread = Thread(null, ::handlePackets, "VpnPacketHandler")
 
     companion object {
@@ -145,8 +152,17 @@ class GuardVpnService : VpnService() {
                 val domain = packetHandler.extractDomain(buffer)
                 if (domain.isEmpty()) continue
 
+                // VPN-03: Cache lookup with TTL check
                 val result = synchronized(dnsCache) {
-                    dnsCache.getOrPut(domain) { dnsEngine.resolve(domain) }
+                    val cached = dnsCache[domain]
+                    if (cached != null && System.currentTimeMillis() - cached.timestamp < CACHE_TTL_MS) {
+                        cached.result
+                    } else {
+                        dnsCache.remove(domain)
+                        val fresh = dnsEngine.resolve(domain)
+                        dnsCache[domain] = CacheEntry(fresh, System.currentTimeMillis())
+                        fresh
+                    }
                 }
 
                 val response = if (result is DnsResult.Block) {
@@ -241,6 +257,13 @@ class GuardVpnService : VpnService() {
                 val responsePkt = DatagramPacket(responseBuf, responseBuf.size)
                 socket.receive(responsePkt)
                 val upstreamResponse = ByteBuffer.wrap(responsePkt.data, 0, responsePkt.length)
+
+                // VPN-02: Validate DNS response integrity
+                if (!packetHandler.validateDnsResponse(query, upstreamResponse)) {
+                    SecureLog.w("GuardVpnService", "DNS response validation failed, dropping")
+                    return null
+                }
+
                 packetHandler.buildResponseFromUpstream(query, upstreamResponse)
             }
         } catch (e: Exception) {
