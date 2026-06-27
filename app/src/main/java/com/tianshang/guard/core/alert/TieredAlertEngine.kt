@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import com.tianshang.guard.core.dns.BlockReason
 import com.tianshang.guard.core.ml.RiskLevel
+import com.tianshang.guard.core.util.SecureLog
 import com.tianshang.guard.data.local.GuardPreferences
 import com.tianshang.guard.data.local.database.AlertEntity
 import com.tianshang.guard.data.local.database.AlertType
@@ -23,12 +24,12 @@ class TieredAlertEngine(
     private val ioScope = CoroutineScope(Dispatchers.IO)
 
     private fun record(type: AlertType, domain: String? = null, url: String? = null, riskLevel: String? = null) {
-        android.util.Log.i("TieredAlert", "record: type=$type")
+        SecureLog.i("TieredAlert", "record: type=$type")
         ioScope.launch {
             try {
                 alertRepository.insert(AlertEntity(type = type, domain = domain, url = url, riskLevel = riskLevel, userAction = null))
             } catch (e: Exception) {
-                android.util.Log.e("TieredAlert", "insert FAILED", e)
+                SecureLog.e("TieredAlert", "insert FAILED", e)
             }
         }
     }

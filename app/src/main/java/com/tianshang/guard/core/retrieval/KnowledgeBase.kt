@@ -1,6 +1,7 @@
 package com.tianshang.guard.core.retrieval
 
 import android.content.Context
+import com.tianshang.guard.core.util.SecureLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -17,12 +18,12 @@ class KnowledgeBase(private val context: Context) {
                 val success = bm25Engine.loadFromAssets(inputStream)
                 inputStream.close()
                 if (success) {
-                    android.util.Log.i("KnowledgeBase", "Loaded BM25 index: ${bm25Engine.getDocCount()} documents")
+                    SecureLog.i("KnowledgeBase", "Loaded BM25 index: ${bm25Engine.getDocCount()} documents")
                 } else {
-                    android.util.Log.e("KnowledgeBase", "Failed to load BM25 index")
+                    SecureLog.e("KnowledgeBase", "Failed to load BM25 index")
                 }
             } catch (e: Exception) {
-                android.util.Log.e("KnowledgeBase", "Failed to open index file", e)
+                SecureLog.e("KnowledgeBase", "Failed to open index file", e)
             }
         }
     }

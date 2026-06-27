@@ -11,6 +11,7 @@ import com.tianshang.guard.R
 import com.tianshang.guard.core.dns.DnsEngine
 import com.tianshang.guard.core.dns.DnsPacketHandler
 import com.tianshang.guard.core.dns.DnsResult
+import com.tianshang.guard.core.util.SecureLog
 import com.tianshang.guard.ui.main.MainActivity
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -71,7 +72,7 @@ class GuardVpnService : VpnService() {
             ACTION_STOP -> stopVpn()
             null -> {
                 if (!running && vpnInterface == null) {
-                    android.util.Log.i("GuardVpnService", "Recreated by system (START_STICKY), restoring VPN")
+                    SecureLog.i("GuardVpnService", "Recreated by system (START_STICKY), restoring VPN")
                     startVpn()
                 }
             }
@@ -80,7 +81,7 @@ class GuardVpnService : VpnService() {
     }
 
     private fun startVpn() {
-        android.util.Log.i("GuardVpnService", "Starting VPN...")
+        SecureLog.i("GuardVpnService", "Starting VPN...")
         val builder = Builder().apply {
             addAddress("198.18.0.1", 15)
             addDnsServer("198.18.0.2")
@@ -89,20 +90,20 @@ class GuardVpnService : VpnService() {
         }
 
         vpnInterface = builder.establish() ?: run {
-            android.util.Log.e("GuardVpnService", "establish() returned null")
+            SecureLog.e("GuardVpnService", "establish() returned null")
             return
         }
         running = true
         lastPacketTime = System.currentTimeMillis()
-        android.util.Log.i("GuardVpnService", "VPN established")
+        SecureLog.i("GuardVpnService", "VPN established")
 
         dnsEngine.start()
-        android.util.Log.i("GuardVpnService", "DnsEngine started")
+        SecureLog.i("GuardVpnService", "DnsEngine started")
 
         startForeground(NOTIFICATION_ID, createNotification())
 
         handlerThread.setUncaughtExceptionHandler { _, e ->
-            android.util.Log.e("GuardVpnService", "Handler thread crashed unexpectedly", e)
+            SecureLog.e("GuardVpnService", "Handler thread crashed unexpectedly", e)
             runOnMainThread { restartVpn() }
         }
         handlerThread.start()
@@ -113,7 +114,7 @@ class GuardVpnService : VpnService() {
 
     private fun handlePackets() {
         val fd = vpnInterface?.fileDescriptor ?: run {
-            android.util.Log.e("GuardVpnService", "handlePackets: fd is null")
+            SecureLog.e("GuardVpnService", "handlePackets: fd is null")
             return
         }
         val input = FileInputStream(fd)
@@ -121,13 +122,13 @@ class GuardVpnService : VpnService() {
         val packet = ByteArray(1500)
         var consecutiveErrors = 0
 
-        android.util.Log.i("GuardVpnService", "Packet handler started")
+        SecureLog.i("GuardVpnService", "Packet handler started")
         while (running) {
             try {
                 val length = input.read(packet)
                 if (length <= 0) {
                     if (++consecutiveErrors > 100) {
-                        android.util.Log.w("GuardVpnService", "Too many consecutive empty reads, restarting VPN")
+                        SecureLog.w("GuardVpnService", "Too many consecutive empty reads, restarting VPN")
                         runOnMainThread { restartVpn() }
                         break
                     }
@@ -149,7 +150,7 @@ class GuardVpnService : VpnService() {
                 }
 
                 val response = if (result is DnsResult.Block) {
-                    android.util.Log.w("GuardVpnService", "Blocked: $domain")
+                    SecureLog.w("GuardVpnService", "Blocked: $domain")
                     packetHandler.buildNxDomainResponse(buffer)
                 } else {
                     forwardToUpstreamDns(buffer)
@@ -159,47 +160,47 @@ class GuardVpnService : VpnService() {
                     output.write(response.array(), response.arrayOffset(), response.limit())
                 }
             } catch (e: java.io.EOFException) {
-                android.util.Log.w("GuardVpnService", "VPN interface closed (EOF)")
+                SecureLog.w("GuardVpnService", "VPN interface closed (EOF)")
                 runOnMainThread { restartVpn() }
                 break
             } catch (e: java.io.InterruptedIOException) {
-                android.util.Log.w("GuardVpnService", "VPN interface I/O interrupted")
+                SecureLog.w("GuardVpnService", "VPN interface I/O interrupted")
                 if (!running) break
                 continue
             } catch (e: Exception) {
-                android.util.Log.e("GuardVpnService", "Packet handler error", e)
+                SecureLog.e("GuardVpnService", "Packet handler error", e)
                 if (++consecutiveErrors > 50) {
-                    android.util.Log.w("GuardVpnService", "Too many packet handler errors, restarting VPN")
+                    SecureLog.w("GuardVpnService", "Too many packet handler errors, restarting VPN")
                     runOnMainThread { restartVpn() }
                     break
                 }
             }
         }
-        android.util.Log.i("GuardVpnService", "Packet handler stopped")
+        SecureLog.i("GuardVpnService", "Packet handler stopped")
     }
 
     private suspend fun runKeepaliveLoop() {
-        android.util.Log.i("GuardVpnService", "Keepalive loop started")
+        SecureLog.i("GuardVpnService", "Keepalive loop started")
         while (running) {
             sendKeepaliveQuery()
             delay(KEEPALIVE_INTERVAL_MS)
         }
-        android.util.Log.i("GuardVpnService", "Keepalive loop stopped")
+        SecureLog.i("GuardVpnService", "Keepalive loop stopped")
     }
 
     private suspend fun runWatchdogLoop() {
-        android.util.Log.i("GuardVpnService", "Watchdog loop started")
+        SecureLog.i("GuardVpnService", "Watchdog loop started")
         while (running) {
             delay(WATCHDOG_INTERVAL_MS)
             val idle = System.currentTimeMillis() - lastPacketTime
             if (idle > IDLE_TIMEOUT_MS && running) {
-                android.util.Log.w("GuardVpnService",
+                SecureLog.w("GuardVpnService",
                     "No packets for ${idle / 1000}s, restarting VPN")
                 runOnMainThread { restartVpn() }
                 break
             }
         }
-        android.util.Log.i("GuardVpnService", "Watchdog loop stopped")
+        SecureLog.i("GuardVpnService", "Watchdog loop stopped")
     }
 
     private fun sendKeepaliveQuery() {
@@ -225,7 +226,7 @@ class GuardVpnService : VpnService() {
                 socket.send(request)
             }
         } catch (e: Exception) {
-            android.util.Log.v("GuardVpnService", "Keepalive error (normal if idle)", e)
+            SecureLog.v("GuardVpnService", "Keepalive error (normal if idle)", e)
         }
     }
 
@@ -243,7 +244,7 @@ class GuardVpnService : VpnService() {
                 packetHandler.buildResponseFromUpstream(query, upstreamResponse)
             }
         } catch (e: Exception) {
-            android.util.Log.w("GuardVpnService", "Upstream DNS error", e)
+            SecureLog.w("GuardVpnService", "Upstream DNS error", e)
             null
         }
     }
@@ -253,7 +254,7 @@ class GuardVpnService : VpnService() {
             if (isRestarting || isDestroying) return
             isRestarting = true
         }
-        android.util.Log.i("GuardVpnService", "Restarting VPN...")
+        SecureLog.i("GuardVpnService", "Restarting VPN...")
 
         teardownInternal()
 
