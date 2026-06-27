@@ -16,6 +16,11 @@ class RuleUpdateWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
+    companion object {
+        private val DOMAIN_REGEX = Regex("^(?!-)[a-zA-Z0-9-]{1,63}(?<!-)(\\.[a-zA-Z0-9-]{1,63})*\\.[a-zA-Z]{2,}$")
+        private const val MAX_RULES_PER_UPDATE = 10000
+    }
+
     override suspend fun doWork(): Result {
         return try {
             val prefs: GuardPreferences = KoinJavaComponent.get(GuardPreferences::class.java)
@@ -27,6 +32,9 @@ class RuleUpdateWorker(
 
             if (compareVersions(remoteVersion.version, localVersion) > 0) {
                 val diff = api.getRulesDiff(localVersion)
+                if (diff.adds.size + diff.removes.size > MAX_RULES_PER_UPDATE) {
+                    return Result.failure()
+                }
                 applyDiff(domainDao, diff.adds, diff.removes)
                 prefs.setRulesVersion(remoteVersion.version)
             }
@@ -39,20 +47,29 @@ class RuleUpdateWorker(
 
     private suspend fun applyDiff(dao: DomainDao, adds: List<String>, removes: List<String>) {
         val now = System.currentTimeMillis()
-        adds.forEach { domain ->
+
+        adds.forEach { rawDomain ->
+            val domain = rawDomain.trim().lowercase()
+            if (!DOMAIN_REGEX.matches(domain)) return@forEach
+            if (dao.isWhitelisted(domain)) return@forEach
+
             dao.insert(
                 DomainEntity(
-                    domain = domain.trim().lowercase(),
+                    domain = domain,
                     category = DomainCategory.BLACKLIST,
                     source = "remote",
                     addedAt = now
                 )
             )
         }
-        removes.forEach { domain ->
+
+        removes.forEach { rawDomain ->
+            val domain = rawDomain.trim().lowercase()
+            if (!DOMAIN_REGEX.matches(domain)) return@forEach
+
             dao.insert(
                 DomainEntity(
-                    domain = domain.trim().lowercase(),
+                    domain = domain,
                     category = DomainCategory.WHITELIST,
                     source = "remote",
                     addedAt = now
