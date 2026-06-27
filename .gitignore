@@ -58,9 +58,6 @@ Thumbs.db
 Desktop.ini
 
 # Project auxiliary files
-PLAN.md
-AGENTS.md
-FEASIBILITY.md
 screenshot.png
 guard_b64.txt
 guard2_b64.txt
@@ -126,3 +123,8 @@ scripts/test_old_model.py
 # Analysis docs
 docs/japanese_sms_prompt.md
 docs/japanese_sms_text.csv
+
+# Markdown files (exclude all except README)
+*.md
+!README.md
+!readme/README.zh-CN.md
