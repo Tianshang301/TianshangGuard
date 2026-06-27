@@ -25,13 +25,15 @@ class LocalDnsEngine(
     private var lastDomainCacheUpdate = 0L
     private val domainCacheTtl = 60_000L
     @Volatile private var initialized = false
+    
+    // BK-tree for efficient domain similarity search
+    private var bkTree = BkTree(threshold = 3)
 
     override fun resolve(domain: String): DnsResult {
         if (!initialized) {
             return DnsResult.Block(BlockReason.SUSPICIOUS)
         }
 
-        // BUGFIX: Use runBlocking to call suspend DAO functions
         val isWhitelisted = runBlocking { ruleRepository.isWhitelisted(domain) }
         if (isWhitelisted) {
             val homographResult = homographDetector.detect(domain)
@@ -82,41 +84,36 @@ class LocalDnsEngine(
         return DnsResult.Unknown(0.5f)
     }
 
+    /**
+     * Calculate domain similarity using BK-tree for efficient search.
+     * BK-tree provides O(log n) average case instead of O(n) linear scan.
+     */
     private fun calculateDomainSimilarity(domain: String): Float {
         val now = System.currentTimeMillis()
         if (now - lastDomainCacheUpdate > domainCacheTtl) {
             cachedKnownDomains = runBlocking { ruleRepository.getKnownDomains() }
             lastDomainCacheUpdate = now
+            // Rebuild BK-tree with updated domains
+            rebuildBkTree()
         }
+        
         if (cachedKnownDomains.isEmpty()) return 0f
-        val maxLenDiff = 3
-        return cachedKnownDomains
-            .filter { kotlin.math.abs(it.length - domain.length) <= maxLenDiff }
-            .maxOfOrNull { levenshteinSimilarity(domain, it) } ?: 0f
+        
+        // Use BK-tree to find closest match within threshold
+        val closest = bkTree.findClosest(domain) ?: return 0f
+        val distance = closest.second
+        val maxLen = maxOf(domain.length, closest.first.length)
+        return 1f - (distance.toFloat() / maxLen)
     }
 
-    private fun levenshteinSimilarity(a: String, b: String): Float {
-        val distance = levenshteinDistance(a, b)
-        return 1f - (distance.toFloat() / maxOf(a.length, b.length))
-    }
-
-    private fun levenshteinDistance(a: String, b: String): Int {
-        val costs = IntArray(b.length + 1)
-        for (j in 0..b.length) costs[j] = j
-        for (i in 1..a.length) {
-            costs[0] = i
-            var previous = i - 1
-            for (j in 1..b.length) {
-                val current = previous
-                previous = costs[j]
-                costs[j] = minOf(
-                    costs[j] + 1,
-                    costs[j - 1] + 1,
-                    current + if (a[i - 1] != b[j - 1]) 1 else 0
-                )
-            }
+    /**
+     * Rebuild BK-tree from cached known domains.
+     */
+    private fun rebuildBkTree() {
+        bkTree = BkTree(threshold = 3)
+        for (domain in cachedKnownDomains) {
+            bkTree.insert(domain)
         }
-        return costs[b.length]
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -131,6 +128,7 @@ class LocalDnsEngine(
             allDomains.forEach { bloomFilter.add(it) }
             cachedKnownDomains = allDomains
             lastDomainCacheUpdate = System.currentTimeMillis()
+            rebuildBkTree()
             initialized = true
         }
     }

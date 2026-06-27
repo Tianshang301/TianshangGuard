@@ -65,7 +65,15 @@ fun StatsScreen() {
             visitedCount = visitedCount,
             smsCount = smsCount
         )
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+        // Trend chart
+        StatsTrendChart(
+            blockedCount = blockedCount,
+            visitedCount = visitedCount,
+            behaviorCount = behaviorCount,
+            smsCount = smsCount
+        )
+        Spacer(modifier = Modifier.height(16.dp))
         RecentAlertsSection(viewModel = viewModel)
     }
 }
@@ -122,6 +130,39 @@ fun BigNumber(value: String, label: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, style = MaterialTheme.typography.displayLarge, color = color, fontWeight = FontWeight.Bold)
         Text(label, style = MaterialTheme.typography.bodyMedium, color = OnSurfaceVariantDark)
+    }
+}
+
+@Composable
+fun StatsTrendChart(blockedCount: Int, visitedCount: Int, behaviorCount: Int, smsCount: Int) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = SurfaceDark)) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(stringResource(R.string.stats_trend_title), style = MaterialTheme.typography.titleMedium, color = OnSurfaceDark)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Simple bar chart showing distribution
+            val data = listOf(
+                Pair(stringResource(R.string.stats_blocked_domains), blockedCount.toFloat()),
+                Pair(stringResource(R.string.stats_visited_domains), visitedCount.toFloat()),
+                Pair(stringResource(R.string.stats_behavior_alerts), behaviorCount.toFloat()),
+                Pair(stringResource(R.string.stats_sms_blocked), smsCount.toFloat())
+            )
+
+            BarChart(
+                data = data,
+                modifier = Modifier.fillMaxWidth().height(120.dp),
+                barColor = GuardRed
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Legend
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                data.forEach { (label, _) ->
+                    Text(label, style = MaterialTheme.typography.labelSmall, color = OnSurfaceVariantDark)
+                }
+            }
+        }
     }
 }
 
