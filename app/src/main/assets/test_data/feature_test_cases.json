@@ -159,7 +159,7 @@
       "hasThreatKeywords": false,
       "hasPhoneNumber": false,
       "urlCount": 0,
-      "language": "CHINESE",
+      "language": "ENGLISH",
       "textLength": 0,
       "digitRatio": 0.0,
       "chineseCharRatio": 0.0,
@@ -222,7 +222,7 @@
       "chineseCharRatio": 0.62,
       "exclamationCount": 1,
       "questionCount": 0,
-      "urgencyWordCount": 3,
+      "urgencyWordCount": 2,
       "threatWordCount": 0,
       "financialWordCount": 0
     }
