@@ -45,6 +45,7 @@ import com.tianshang.guard.ui.theme.SurfaceVariantDark
 import com.tianshang.guard.ui.theme.TianshangGuardTheme
 import com.tianshang.guard.data.local.database.AlertType
 import com.tianshang.guard.data.local.database.AlertEntity
+import com.tianshang.guard.core.alert.AlertDataHolder
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import com.tianshang.guard.data.repository.AlertRepository
@@ -57,12 +58,17 @@ class AlertActivity : ComponentActivity(), KoinComponent {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val alertType = intent.getStringExtra("alert_type") ?: "SCREEN_SHARE"
-        val domain = intent.getStringExtra("domain")
-        val url = intent.getStringExtra("url")
-        val smsSender = intent.getStringExtra("sms_sender")
-        val smsBody = intent.getStringExtra("sms_body")
-        val riskLevel = intent.getStringExtra("risk_level")
+
+        val alertKey = intent.getStringExtra("alert_key")
+        val data = alertKey?.let { AlertDataHolder.consume(it) }
+
+        val alertType = data?.alertType ?: "SCREEN_SHARE"
+        val domain = data?.domain
+        val url = data?.url
+        val smsSender = data?.smsSender
+        val smsBody = data?.smsBody
+        val riskLevel = data?.riskLevel
+
         setContent {
             TianshangGuardTheme {
                 when (alertType) {
