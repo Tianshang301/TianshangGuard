@@ -54,6 +54,7 @@
     <string name="stats_sms_blocked">短信拦截</string>
     <string name="stats_recent_alerts">近期预警</string>
     <string name="stats_no_alerts">暂无预警记录</string>
+    <string name="stats_trend_title">数据分布</string>
     <string name="alert_type_blocked_domain">拦截域名</string>
     <string name="alert_type_suspicious_domain">可疑域名</string>
     <string name="alert_type_phishing_page">网页预警</string>

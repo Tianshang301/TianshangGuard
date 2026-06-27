@@ -22,6 +22,17 @@ class TieredAlertEngine(
 
     private val cooldownManager = CooldownManager(prefs)
     private val ioScope = CoroutineScope(Dispatchers.IO)
+    
+    // Global rate limiter: max 1 alert per 5 seconds
+    private var lastGlobalAlertTime = 0L
+    private val globalCooldownMs = 5000L
+
+    private fun canLaunchAlert(): Boolean {
+        val now = System.currentTimeMillis()
+        if (now - lastGlobalAlertTime < globalCooldownMs) return false
+        lastGlobalAlertTime = now
+        return true
+    }
 
     private fun record(type: AlertType, domain: String? = null, url: String? = null, riskLevel: String? = null) {
         SecureLog.i("TieredAlert", "record: type=$type")
@@ -61,6 +72,7 @@ class TieredAlertEngine(
         record(AlertType.PHISHING_PAGE, url = url, riskLevel = riskLevel.name)
         val config = resolveAlertConfig(riskLevel)
         if (cooldownManager.isInCooldown("phishing_$url", config.cooldownSeconds)) return
+        if (!canLaunchAlert()) return // Global rate limit
 
         val key = "phishing_${System.currentTimeMillis()}"
         AlertDataHolder.put(key, AlertDataHolder.AlertData(
@@ -78,6 +90,7 @@ class TieredAlertEngine(
         record(AlertType.SUSPICIOUS_DOMAIN, domain = domain)
         val config = resolveAlertConfig(RiskLevel.SUSPICIOUS)
         if (cooldownManager.isInCooldown("domain_$domain", config.cooldownSeconds)) return
+        if (!canLaunchAlert()) return // Global rate limit
 
         val key = "domain_${System.currentTimeMillis()}"
         AlertDataHolder.put(key, AlertDataHolder.AlertData(
@@ -117,6 +130,7 @@ class TieredAlertEngine(
         val cooldownKey = "sms_${sender}_$bodyHash"
 
         if (useCooldown && cooldownManager.isInCooldown(cooldownKey, config.cooldownSeconds)) return
+        if (!canLaunchAlert()) return // Global rate limit
 
         val key = "sms_${System.currentTimeMillis()}"
         AlertDataHolder.put(key, AlertDataHolder.AlertData(

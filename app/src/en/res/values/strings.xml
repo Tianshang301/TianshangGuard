@@ -54,6 +54,7 @@
     <string name="stats_sms_blocked">SMS Blocked</string>
     <string name="stats_recent_alerts">Recent Alerts</string>
     <string name="stats_no_alerts">No alerts recorded</string>
+    <string name="stats_trend_title">Data Distribution</string>
     <string name="alert_type_blocked_domain">Blocked Domain</string>
     <string name="alert_type_suspicious_domain">Suspicious Domain</string>
     <string name="alert_type_phishing_page">Page Warning</string>
