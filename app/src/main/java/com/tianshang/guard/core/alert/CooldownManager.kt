@@ -10,7 +10,8 @@ class CooldownManager(private val prefs: GuardPreferences) {
     fun isInCooldown(key: String, cooldownSeconds: Int): Boolean {
         if (cooldownSeconds <= 0) return false
         val lastTrigger = triggerTimes[key] ?: return false
-        return (System.currentTimeMillis() - lastTrigger) < cooldownSeconds * 1000
+        // L-1: Use toLong() to prevent integer overflow
+        return (System.currentTimeMillis() - lastTrigger) < cooldownSeconds.toLong() * 1000
     }
 
     fun recordTrigger(key: String) {

@@ -22,13 +22,15 @@ class LocalDnsEngine(
         expectedItems = 100_000,
         targetFpp = 0.001
     )
-    private var cachedKnownDomains: List<String> = emptyList()
-    private var lastDomainCacheUpdate = 0L
+    @Volatile private var cachedKnownDomains: List<String> = emptyList()
+    @Volatile private var lastDomainCacheUpdate = 0L
     private val domainCacheTtl = 60_000L
     @Volatile private var initialized = false
     
     // BK-tree for efficient domain similarity search
-    private var bkTree = BkTree(threshold = 3)
+    @Volatile private var bkTree = BkTree(threshold = 3)
+    // H-9: Lock for cache refresh to prevent concurrent BK-tree rebuilds
+    private val cacheLock = Any()
 
     private var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -95,16 +97,19 @@ class LocalDnsEngine(
      */
     private fun calculateDomainSimilarity(domain: String): Float {
         val now = System.currentTimeMillis()
+        // H-9: Double-checked locking to prevent concurrent BK-tree rebuilds
         if (now - lastDomainCacheUpdate > domainCacheTtl) {
-            cachedKnownDomains = runBlocking { ruleRepository.getKnownDomains() }
-            lastDomainCacheUpdate = now
-            // Rebuild BK-tree with updated domains
-            rebuildBkTree()
+            synchronized(cacheLock) {
+                if (now - lastDomainCacheUpdate > domainCacheTtl) {
+                    cachedKnownDomains = runBlocking { ruleRepository.getKnownDomains() }
+                    lastDomainCacheUpdate = System.currentTimeMillis()
+                    rebuildBkTree()
+                }
+            }
         }
         
         if (cachedKnownDomains.isEmpty()) return 0f
         
-        // Use BK-tree to find closest match within threshold
         val closest = bkTree.findClosest(domain) ?: return 0f
         val distance = closest.second
         val maxLen = maxOf(domain.length, closest.first.length)

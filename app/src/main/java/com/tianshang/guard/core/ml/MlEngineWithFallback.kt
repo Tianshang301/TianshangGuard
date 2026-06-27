@@ -39,17 +39,19 @@ class MlEngineWithFallback(
     private val retryTimestamps = Collections.synchronizedMap(mutableMapOf<ModelType, Long>())
     private val baseRetryDelay = 30_000L // 30 seconds
 
+    // H-12: Synchronize state access to prevent race conditions
     private fun getState(type: ModelType): MlState {
-        // Check if we should retry a previously failed model
-        val state = states[type] ?: MlState.Loading
-        if (state is MlState.Fallback || state is MlState.Failed) {
-            val retryAt = retryTimestamps[type] ?: 0L
-            if (System.currentTimeMillis() >= retryAt) {
-                states[type] = MlState.Ready
-                return MlState.Ready
+        synchronized(states) {
+            val state = states[type] ?: MlState.Loading
+            if (state is MlState.Fallback || state is MlState.Failed) {
+                val retryAt = retryTimestamps[type] ?: 0L
+                if (System.currentTimeMillis() >= retryAt) {
+                    states[type] = MlState.Ready
+                    return MlState.Ready
+                }
             }
+            return state
         }
-        return state
     }
 
     override fun analyzeWebPage(text: String): RiskLevel {

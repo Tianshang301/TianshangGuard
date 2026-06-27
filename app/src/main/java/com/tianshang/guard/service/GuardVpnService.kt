@@ -57,6 +57,8 @@ class GuardVpnService : VpnService() {
     @Volatile private var lastPacketTime = 0L // VPN-05: Thread-safe
     // BUGFIX: Create new Thread on each startVpn() - Thread can only be started once
     private var handlerThread: Thread? = null
+    // C-5: Store restart runnable so it can be cancelled on stop
+    private var restartRunnable: Runnable? = null
 
     companion object {
         const val NOTIFICATION_ID = 1001
@@ -136,73 +138,79 @@ class GuardVpnService : VpnService() {
         var consecutiveErrors = 0
 
         SecureLog.i("GuardVpnService", "Packet handler started")
-        while (running) {
-            try {
-                val length = input.read(packet)
-                if (length <= 0) {
-                    if (++consecutiveErrors > 100) {
-                        SecureLog.w("GuardVpnService", "Too many consecutive empty reads, restarting VPN")
+        try {
+            while (running) {
+                try {
+                    val length = input.read(packet)
+                    if (length <= 0) {
+                        if (++consecutiveErrors > 100) {
+                            SecureLog.w("GuardVpnService", "Too many consecutive empty reads, restarting VPN")
+                            runOnMainThread { restartVpn() }
+                            break
+                        }
+                        Thread.sleep(10)
+                        continue
+                    }
+                    consecutiveErrors = 0
+
+                    val buffer = ByteBuffer.wrap(packet, 0, length)
+                    if (!packetHandler.isDnsQuery(buffer)) continue
+
+                    lastPacketTime = System.currentTimeMillis()
+
+                    val domain = packetHandler.extractDomain(buffer)
+                    if (domain.isEmpty()) continue
+
+                    // VPN-03: Cache lookup with TTL check
+                    // BUGFIX: Don't hold lock during expensive dnsEngine.resolve()
+                    val cached = synchronized(dnsCache) {
+                        val entry = dnsCache[domain]
+                        if (entry != null && System.currentTimeMillis() - entry.timestamp < CACHE_TTL_MS) {
+                            entry.result
+                        } else {
+                            dnsCache.remove(domain)
+                            null
+                        }
+                    }
+                    val result = cached ?: run {
+                        val fresh = dnsEngine.resolve(domain)
+                        synchronized(dnsCache) {
+                            dnsCache[domain] = CacheEntry(fresh, System.currentTimeMillis())
+                        }
+                        fresh
+                    }
+
+                    val response = if (result is DnsResult.Block) {
+                        SecureLog.w("GuardVpnService", "Blocked: $domain")
+                        packetHandler.buildNxDomainResponse(buffer)
+                    } else {
+                        forwardToUpstreamDns(buffer)
+                    }
+
+                    if (response != null) {
+                        output.write(response.array(), response.arrayOffset(), response.remaining())
+                    }
+                } catch (e: java.io.EOFException) {
+                    SecureLog.w("GuardVpnService", "VPN interface closed (EOF)")
+                    runOnMainThread { restartVpn() }
+                    break
+                } catch (e: java.io.InterruptedIOException) {
+                    SecureLog.w("GuardVpnService", "VPN interface I/O interrupted")
+                    if (!running) break
+                    continue
+                } catch (e: Exception) {
+                    SecureLog.e("GuardVpnService", "Packet handler error", e)
+                    if (++consecutiveErrors > 50) {
+                        SecureLog.w("GuardVpnService", "Too many packet handler errors, restarting VPN")
                         runOnMainThread { restartVpn() }
                         break
                     }
-                    Thread.sleep(10)
-                    continue
-                }
-                consecutiveErrors = 0
-
-                val buffer = ByteBuffer.wrap(packet, 0, length)
-                if (!packetHandler.isDnsQuery(buffer)) continue
-
-                lastPacketTime = System.currentTimeMillis()
-
-                val domain = packetHandler.extractDomain(buffer)
-                if (domain.isEmpty()) continue
-
-                // VPN-03: Cache lookup with TTL check
-                // BUGFIX: Don't hold lock during expensive dnsEngine.resolve()
-                val cached = synchronized(dnsCache) {
-                    val entry = dnsCache[domain]
-                    if (entry != null && System.currentTimeMillis() - entry.timestamp < CACHE_TTL_MS) {
-                        entry.result
-                    } else {
-                        dnsCache.remove(domain)
-                        null
-                    }
-                }
-                val result = cached ?: run {
-                    val fresh = dnsEngine.resolve(domain)
-                    synchronized(dnsCache) {
-                        dnsCache[domain] = CacheEntry(fresh, System.currentTimeMillis())
-                    }
-                    fresh
-                }
-
-                val response = if (result is DnsResult.Block) {
-                    SecureLog.w("GuardVpnService", "Blocked: $domain")
-                    packetHandler.buildNxDomainResponse(buffer)
-                } else {
-                    forwardToUpstreamDns(buffer)
-                }
-
-                if (response != null) {
-                    output.write(response.array(), response.arrayOffset(), response.remaining())
-                }
-            } catch (e: java.io.EOFException) {
-                SecureLog.w("GuardVpnService", "VPN interface closed (EOF)")
-                runOnMainThread { restartVpn() }
-                break
-            } catch (e: java.io.InterruptedIOException) {
-                SecureLog.w("GuardVpnService", "VPN interface I/O interrupted")
-                if (!running) break
-                continue
-            } catch (e: Exception) {
-                SecureLog.e("GuardVpnService", "Packet handler error", e)
-                if (++consecutiveErrors > 50) {
-                    SecureLog.w("GuardVpnService", "Too many packet handler errors, restarting VPN")
-                    runOnMainThread { restartVpn() }
-                    break
                 }
             }
+        } finally {
+            // H-7: Close file streams in finally block
+            try { input.close() } catch (_: Exception) {}
+            try { output.close() } catch (_: Exception) {}
         }
         SecureLog.i("GuardVpnService", "Packet handler stopped")
     }
@@ -303,12 +311,14 @@ class GuardVpnService : VpnService() {
         running = false // BUGFIX: Stop handler thread before teardown
         teardownInternal()
 
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+        // C-5: Store restart runnable so it can be cancelled
+        restartRunnable = Runnable {
             synchronized(this) {
                 isRestarting = false
             }
-            startVpn()
-        }, 500)
+            if (!isDestroying) startVpn()
+        }
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(restartRunnable!!, 500)
     }
 
     private fun stopVpn() {
@@ -316,6 +326,11 @@ class GuardVpnService : VpnService() {
             if (!running && vpnInterface == null) return
             running = false
         }
+        // C-5: Cancel pending restart runnable
+        restartRunnable?.let {
+            android.os.Handler(android.os.Looper.getMainLooper()).removeCallbacks(it)
+        }
+        restartRunnable = null
         teardownInternal()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()

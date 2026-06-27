@@ -51,6 +51,7 @@ import com.tianshang.guard.ui.theme.TianshangGuardTheme
 import com.tianshang.guard.data.local.database.AlertType
 import com.tianshang.guard.data.local.database.AlertEntity
 import com.tianshang.guard.core.alert.AlertDataHolder
+import com.tianshang.guard.core.util.SecureLog
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import com.tianshang.guard.data.repository.AlertRepository
@@ -67,12 +68,19 @@ class AlertActivity : ComponentActivity(), KoinComponent {
         val alertKey = intent.getStringExtra("alert_key")
         val data = alertKey?.let { AlertDataHolder.consume(it) }
 
-        val alertType = data?.alertType ?: "SCREEN_SHARE"
-        val domain = data?.domain
-        val url = data?.url
-        val smsSender = data?.smsSender
-        val smsBody = data?.smsBody
-        val riskLevel = data?.riskLevel
+        // M-9: If data expired (TTL), finish silently instead of showing wrong alert
+        if (data == null) {
+            SecureLog.w("AlertActivity", "Alert data expired or missing for key: $alertKey")
+            finish()
+            return
+        }
+
+        val alertType = data.alertType
+        val domain = data.domain
+        val url = data.url
+        val smsSender = data.smsSender
+        val smsBody = data.smsBody
+        val riskLevel = data.riskLevel
 
         setContent {
             TianshangGuardTheme {
