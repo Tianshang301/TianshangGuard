@@ -45,7 +45,10 @@ class DnsPacketHandler {
         return sb.toString()
     }
 
-    private fun resolveCompressedName(buffer: ByteBuffer, dnsOffset: Int, offset: Int): String {
+    private fun resolveCompressedName(buffer: ByteBuffer, dnsOffset: Int, offset: Int, depth: Int = 0): String {
+        if (depth > MAX_COMPRESSION_DEPTH) return ""
+        if (offset < 0 || dnsOffset + offset >= buffer.remaining()) return ""
+
         val sb = StringBuilder()
         var pos = dnsOffset + offset
         while (true) {
@@ -53,17 +56,23 @@ class DnsPacketHandler {
             val len = buffer.get(pos).toInt() and 0xFF
             if (len == 0) break
             if (len and 0xC0 == 0xC0) {
+                if (pos + 1 >= buffer.remaining()) break
                 val nextOffset = ((len and 0x3F) shl 8) or (buffer.get(pos + 1).toInt() and 0xFF)
-                return sb.toString() + resolveCompressedName(buffer, dnsOffset, nextOffset)
+                return sb.toString() + resolveCompressedName(buffer, dnsOffset, nextOffset, depth + 1)
             }
             pos++
             if (sb.isNotEmpty()) sb.append('.')
             for (i in 0 until len) {
+                if (pos >= buffer.remaining()) return sb.toString()
                 sb.append((buffer.get(pos).toInt() and 0xFF).toChar())
                 pos++
             }
         }
         return sb.toString()
+    }
+
+    companion object {
+        private const val MAX_COMPRESSION_DEPTH = 10
     }
 
     fun extractDnsPayload(buffer: ByteBuffer): ByteArray {
