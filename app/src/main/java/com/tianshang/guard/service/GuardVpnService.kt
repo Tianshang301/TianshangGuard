@@ -53,7 +53,8 @@ class GuardVpnService : VpnService() {
     private var keepaliveJob: Job? = null
     private var watchdogJob: Job? = null
     @Volatile private var lastPacketTime = 0L // VPN-05: Thread-safe
-    private val handlerThread = Thread(null, ::handlePackets, "VpnPacketHandler")
+    // BUGFIX: Create new Thread on each startVpn() - Thread can only be started once
+    private var handlerThread: Thread? = null
 
     companion object {
         const val NOTIFICATION_ID = 1001
@@ -109,11 +110,14 @@ class GuardVpnService : VpnService() {
 
         startForeground(NOTIFICATION_ID, createNotification())
 
-        handlerThread.setUncaughtExceptionHandler { _, e ->
-            SecureLog.e("GuardVpnService", "Handler thread crashed unexpectedly", e)
-            runOnMainThread { restartVpn() }
+        // BUGFIX: Create a new thread each time (Thread can only start once)
+        handlerThread = Thread(null, ::handlePackets, "VpnPacketHandler").apply {
+            setUncaughtExceptionHandler { _, e ->
+                SecureLog.e("GuardVpnService", "Handler thread crashed unexpectedly", e)
+                runOnMainThread { restartVpn() }
+            }
+            start()
         }
-        handlerThread.start()
 
         keepaliveJob = serviceScope.launch { runKeepaliveLoop() }
         watchdogJob = serviceScope.launch { runWatchdogLoop() }
@@ -153,16 +157,22 @@ class GuardVpnService : VpnService() {
                 if (domain.isEmpty()) continue
 
                 // VPN-03: Cache lookup with TTL check
-                val result = synchronized(dnsCache) {
-                    val cached = dnsCache[domain]
-                    if (cached != null && System.currentTimeMillis() - cached.timestamp < CACHE_TTL_MS) {
-                        cached.result
+                // BUGFIX: Don't hold lock during expensive dnsEngine.resolve()
+                val cached = synchronized(dnsCache) {
+                    val entry = dnsCache[domain]
+                    if (entry != null && System.currentTimeMillis() - entry.timestamp < CACHE_TTL_MS) {
+                        entry.result
                     } else {
                         dnsCache.remove(domain)
-                        val fresh = dnsEngine.resolve(domain)
-                        dnsCache[domain] = CacheEntry(fresh, System.currentTimeMillis())
-                        fresh
+                        null
                     }
+                }
+                val result = cached ?: run {
+                    val fresh = dnsEngine.resolve(domain)
+                    synchronized(dnsCache) {
+                        dnsCache[domain] = CacheEntry(fresh, System.currentTimeMillis())
+                    }
+                    fresh
                 }
 
                 val response = if (result is DnsResult.Block) {
@@ -279,6 +289,7 @@ class GuardVpnService : VpnService() {
         }
         SecureLog.i("GuardVpnService", "Restarting VPN...")
 
+        running = false // BUGFIX: Stop handler thread before teardown
         teardownInternal()
 
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({

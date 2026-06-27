@@ -8,13 +8,16 @@ import com.tianshang.guard.R
 import com.tianshang.guard.core.dns.DnsEngine
 import com.tianshang.guard.core.monitor.ScreenShareMonitor
 import com.tianshang.guard.core.optimizer.BatteryOptimizer
+import com.tianshang.guard.core.feedback.FeedbackEngine
 import com.tianshang.guard.data.local.GuardPreferences
 import com.tianshang.guard.data.repository.AlertRepository
 import com.tianshang.guard.data.repository.RuleRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
 class SettingsViewModel(
@@ -22,7 +25,8 @@ class SettingsViewModel(
     private val dnsEngine: DnsEngine,
     private val alertRepository: AlertRepository,
     private val ruleRepository: RuleRepository,
-    private val monitor: ScreenShareMonitor
+    private val monitor: ScreenShareMonitor,
+    private val feedbackEngine: FeedbackEngine
 ) : ViewModel() {
 
     val vpnAutoStart: StateFlow<Boolean> = prefs.vpnAutoStart.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
@@ -70,10 +74,12 @@ class SettingsViewModel(
     fun clearData() = viewModelScope.launch {
         alertRepository.clearAll()
         ruleRepository.clearAll()
+        feedbackEngine.clearAll() // BUGFIX: Also clear feedback data
     }
 
     fun checkRuleUpdates() = viewModelScope.launch {
-        dnsEngine.start()
+        // BUGFIX: Run DNS engine start on IO dispatcher to avoid blocking main thread
+        withContext(Dispatchers.IO) { dnsEngine.start() }
     }
 
     fun openBatterySettings(context: Context) {

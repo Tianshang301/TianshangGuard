@@ -89,7 +89,7 @@ class AlertActivity : ComponentActivity(), KoinComponent {
                         onDismiss = { finish() },
                         onFeedback = { label -> submitFeedback(smsBody ?: "", riskLevel ?: "SUSPICIOUS", label, "sms") }
                     )
-                    else -> BlockedAlert(domain = domain ?: "unknown")
+                    else -> BlockedAlert(domain = domain ?: "unknown", onDismiss = { finish() })
                 }
             }
         }
@@ -185,12 +185,16 @@ fun SuspiciousDomainAlert(domain: String, onDismiss: () -> Unit) {
 }
 
 @Composable
-fun BlockedAlert(domain: String) {
+fun BlockedAlert(domain: String, onDismiss: () -> Unit = {}) {
     Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = SurfaceVariantDark)) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("\u2705", fontSize = 18.sp)
             Spacer(modifier = Modifier.size(8.dp))
-            Text(stringResource(R.string.alert_blocked_phishing_domain, domain), style = MaterialTheme.typography.bodyMedium, color = OnSurfaceDark)
+            Text(stringResource(R.string.alert_blocked_phishing_domain, domain), style = MaterialTheme.typography.bodyMedium, color = OnSurfaceDark, modifier = Modifier.weight(1f))
+            // BUGFIX: Add dismiss button so user can close the alert
+            Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = GuardRed)) {
+                Text(stringResource(R.string.button_confirm))
+            }
         }
     }
 }

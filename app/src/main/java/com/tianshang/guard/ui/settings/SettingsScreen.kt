@@ -202,8 +202,9 @@ fun SettingsSection(title: String, content: @Composable () -> Unit) {
 
 @Composable
 fun SettingsToggle(label: String, description: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().clickable { onCheckedChange(!checked) }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f)) {
+    // BUGFIX: Remove Row clickable to prevent double-trigger with Switch
+    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f).clickable { onCheckedChange(!checked) }) {
             Text(label, style = MaterialTheme.typography.bodyLarge, color = OnSurfaceDark)
             Text(description, style = MaterialTheme.typography.bodyMedium, color = OnSurfaceVariantDark)
         }

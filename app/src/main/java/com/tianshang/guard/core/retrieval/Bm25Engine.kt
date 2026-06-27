@@ -133,15 +133,18 @@ class Bm25Engine {
     private fun decompressZlib(data: ByteArray): ByteArray {
         val inflater = Inflater()
         inflater.setInput(data)
-        val output = ByteArray(data.size * 10) // Initial estimate
-        val result = mutableListOf<Byte>()
+        // BUGFIX: Use ByteArrayOutputStream instead of MutableList<Byte> (16x less memory)
+        val outputStream = java.io.ByteArrayOutputStream()
         val buffer = ByteArray(4096)
         while (!inflater.finished()) {
             val count = inflater.inflate(buffer)
-            if (count == 0) break
-            for (i in 0 until count) result.add(buffer[i])
+            if (count == 0) {
+                if (inflater.needsInput() || inflater.needsDictionary()) break
+                continue
+            }
+            outputStream.write(buffer, 0, count)
         }
         inflater.end()
-        return result.toByteArray()
+        return outputStream.toByteArray()
     }
 }

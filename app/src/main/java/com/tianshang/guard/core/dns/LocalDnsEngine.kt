@@ -17,7 +17,7 @@ class LocalDnsEngine(
     private val mlEngine: MlEngine
 ) : DnsEngine {
 
-    private var bloomFilter = AdaptiveBloomFilter(
+    @Volatile private var bloomFilter = AdaptiveBloomFilter(
         expectedItems = 100_000,
         targetFpp = 0.001
     )
@@ -91,7 +91,11 @@ class LocalDnsEngine(
             lastDomainCacheUpdate = now
         }
         if (cachedKnownDomains.isEmpty()) return 0f
-        return cachedKnownDomains.maxOf { levenshteinSimilarity(domain, it) }
+        // BUGFIX: Pre-filter by length difference to avoid O(N*M) on all domains
+        val maxLenDiff = 3
+        return cachedKnownDomains
+            .filter { kotlin.math.abs(it.length - domain.length) <= maxLenDiff }
+            .maxOfOrNull { levenshteinSimilarity(domain, it) } ?: 0f
     }
 
     private fun levenshteinSimilarity(a: String, b: String): Float {

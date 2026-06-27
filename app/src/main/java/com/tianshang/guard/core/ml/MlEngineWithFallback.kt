@@ -9,6 +9,7 @@ import com.tianshang.guard.core.util.SecureLog
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import java.util.Collections
 import java.util.LinkedHashMap
 
 class MlEngineWithFallback(
@@ -21,15 +22,35 @@ class MlEngineWithFallback(
     private val featurePredictor: FeatureBasedPredictor
 ) : MlEngine {
 
-    private val states = mutableMapOf<ModelType, MlState>()
+    // BUGFIX: Use ConcurrentHashMap for thread-safe state management
+    private val states = Collections.synchronizedMap(mutableMapOf<ModelType, MlState>())
     private val inferenceTimeout = 500L
-    private val resultCache = object : LinkedHashMap<String, RiskLevel>(100, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, RiskLevel>): Boolean {
-            return size > 100
-        }
-    }
 
-    private fun getState(type: ModelType): MlState = states[type] ?: MlState.Loading
+    // BUGFIX: Use synchronizedMap for thread-safe LRU cache
+    private val resultCache = Collections.synchronizedMap(
+        object : LinkedHashMap<String, RiskLevel>(100, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, RiskLevel>): Boolean {
+                return size > 100
+            }
+        }
+    )
+
+    // BUGFIX: Retry mechanism instead of permanent disable on timeout
+    private val retryTimestamps = Collections.synchronizedMap(mutableMapOf<ModelType, Long>())
+    private val baseRetryDelay = 30_000L // 30 seconds
+
+    private fun getState(type: ModelType): MlState {
+        // Check if we should retry a previously failed model
+        val state = states[type] ?: MlState.Loading
+        if (state is MlState.Fallback || state is MlState.Failed) {
+            val retryAt = retryTimestamps[type] ?: 0L
+            if (System.currentTimeMillis() >= retryAt) {
+                states[type] = MlState.Ready
+                return MlState.Ready
+            }
+        }
+        return state
+    }
 
     override fun analyzeWebPage(text: String): RiskLevel {
         return analyzeWithFallback(text, ModelType.URL)
@@ -63,7 +84,8 @@ class MlEngineWithFallback(
         // 1. Model inference → continuous score
         val modelScore = when {
             states.any { it.value is MlState.Ready } -> runSmsWithScore(text)
-            else -> fallbackEngine.analyzeSms(text).threshold
+            // BUGFIX: Use .toScore() instead of .threshold to avoid boundary escalation
+            else -> fallbackEngine.analyzeSms(text).toScore()
         }
 
         // 2. BM25 retrieval → continuous score (phishingRatio)
@@ -84,7 +106,8 @@ class MlEngineWithFallback(
         val featureScore = runBlocking {
             val features = featureExtractor.extractFeatures(text)
             val prediction = featurePredictor.predict(features)
-            if (prediction.matchCount > 0) prediction.riskLevel.threshold else null
+            // BUGFIX: Use .toScore() instead of .threshold
+            if (prediction.matchCount > 0) prediction.riskLevel.toScore() else null
         }
 
         // Weighted fusion with continuous scores
@@ -119,9 +142,10 @@ class MlEngineWithFallback(
             score
         } catch (e: TimeoutCancellationException) {
             tracer.recordTimeout()
-            fallbackEngine.analyzeSms(text).threshold
+            // BUGFIX: Use .toScore() instead of .threshold
+            fallbackEngine.analyzeSms(text).toScore()
         } catch (e: Exception) {
-            fallbackEngine.analyzeSms(text).threshold
+            fallbackEngine.analyzeSms(text).toScore()
         }
     }
 
@@ -129,13 +153,17 @@ class MlEngineWithFallback(
         return RiskLevel.fromScore(runSmsWithScore(text))
     }
 
+    // BUGFIX: Use correct fallback method based on type (not always analyzeSms)
     private fun analyzeWithFallback(text: String, type: ModelType): RiskLevel {
         val cacheKey = "${type.name}:$text"
         resultCache[cacheKey]?.let { return it }
 
         val result = when (getState(type)) {
             is MlState.Ready -> runWithTimeout(text, type)
-            else -> fallbackEngine.analyzeSms(text)
+            else -> when (type) {
+                ModelType.URL -> fallbackEngine.analyzeWebPage(text)
+                else -> fallbackEngine.analyzeSms(text)
+            }
         }
 
         resultCache[cacheKey] = result
@@ -154,11 +182,19 @@ class MlEngineWithFallback(
             result
         } catch (e: TimeoutCancellationException) {
             tracer.recordTimeout()
-            states[type] = MlState.Fallback
-            fallbackEngine.analyzeSms(text)
+            // BUGFIX: Set retry timestamp instead of permanent disable
+            retryTimestamps[type] = System.currentTimeMillis() + baseRetryDelay
+            when (type) {
+                ModelType.URL -> fallbackEngine.analyzeWebPage(text)
+                else -> fallbackEngine.analyzeSms(text)
+            }
         } catch (e: Exception) {
-            states[type] = MlState.Failed(e.message ?: "Unknown")
-            fallbackEngine.analyzeSms(text)
+            // BUGFIX: Set retry timestamp instead of permanent disable
+            retryTimestamps[type] = System.currentTimeMillis() + baseRetryDelay
+            when (type) {
+                ModelType.URL -> fallbackEngine.analyzeWebPage(text)
+                else -> fallbackEngine.analyzeSms(text)
+            }
         }
     }
 
@@ -174,10 +210,10 @@ class MlEngineWithFallback(
             result
         } catch (e: TimeoutCancellationException) {
             tracer.recordTimeout()
-            states[ModelType.URL] = MlState.Fallback
+            retryTimestamps[ModelType.URL] = System.currentTimeMillis() + baseRetryDelay
             fallbackEngine.analyzeDomain(domain)
         } catch (e: Exception) {
-            states[ModelType.URL] = MlState.Failed(e.message ?: "Unknown")
+            retryTimestamps[ModelType.URL] = System.currentTimeMillis() + baseRetryDelay
             fallbackEngine.analyzeDomain(domain)
         }
     }
@@ -187,6 +223,7 @@ class MlEngineWithFallback(
             SecureLog.i("MlEngine", "Loading model: $modelPath ($type)")
             onnxEngine.loadModel(modelPath, type)
             states[type] = MlState.Ready
+            retryTimestamps.remove(type)
             SecureLog.i("MlEngine", "Model loaded successfully: $type")
         } catch (e: Exception) {
             SecureLog.e("MlEngine", "Model load FAILED: $type", e)

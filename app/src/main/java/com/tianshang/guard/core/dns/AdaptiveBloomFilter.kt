@@ -55,11 +55,10 @@ class AdaptiveBloomFilter(
             }
 
             var k1 = 0
-            when (length % 4) {
-                3 -> k1 = (data[i + 2].toInt() and 0xFF) shl 16
-                2 -> k1 = k1 or ((data[i + 1].toInt() and 0xFF) shl 8)
-                1 -> k1 = k1 or (data[i].toInt() and 0xFF)
-            }
+            val remainder = length % 4
+            if (remainder >= 3) k1 = k1 or ((data[i + 2].toInt() and 0xFF) shl 16)
+            if (remainder >= 2) k1 = k1 or ((data[i + 1].toInt() and 0xFF) shl 8)
+            if (remainder >= 1) k1 = k1 or (data[i].toInt() and 0xFF)
             k1 *= c1
             k1 = (k1 shl 15) or (k1 ushr 17)
             k1 *= c2
