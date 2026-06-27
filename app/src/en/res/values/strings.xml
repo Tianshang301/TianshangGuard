@@ -66,6 +66,12 @@
     <string name="settings_screen_title">Settings</string>
     <string name="settings_add_whitelist">Add to Whitelist</string>
     <string name="settings_add_blacklist">Add to Blacklist</string>
+    <string name="settings_section_general">General</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_desc">Switch app display language</string>
+    <string name="settings_language_system">Follow System</string>
+    <string name="settings_language_zh">简体中文</string>
+    <string name="settings_language_en">English</string>
     <string name="settings_section_protection">Protection</string>
     <string name="settings_vpn_auto_start">VPN Auto-Start</string>
     <string name="settings_vpn_auto_start_desc">Automatically start VPN protection on boot</string>

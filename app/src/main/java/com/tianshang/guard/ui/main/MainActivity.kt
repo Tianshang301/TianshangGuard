@@ -72,6 +72,8 @@ import com.tianshang.guard.ui.theme.ShieldBlue
 import com.tianshang.guard.ui.theme.SurfaceDark
 import com.tianshang.guard.ui.theme.SurfaceVariantDark
 import com.tianshang.guard.ui.theme.TianshangGuardTheme
+import com.tianshang.guard.core.util.LocaleHelper
+import kotlinx.coroutines.flow.first
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -82,6 +84,12 @@ class MainActivity : ComponentActivity(), KoinComponent {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Apply language setting
+        val language = kotlinx.coroutines.runBlocking { prefs.language.first() }
+        val wrappedContext = LocaleHelper.wrapContext(this, language)
+        applyOverrideConfiguration(wrappedContext.resources.configuration)
+
         setContent {
             TianshangGuardTheme {
                 val onboardingDone by prefs.onboardingDone.collectAsState(initial = false)
