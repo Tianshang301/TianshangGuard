@@ -82,13 +82,17 @@ class MainActivity : ComponentActivity(), KoinComponent {
 
     private val prefs: com.tianshang.guard.data.local.GuardPreferences by inject()
 
+    override fun attachBaseContext(newBase: Context) {
+        // Apply language setting before onCreate()
+        val language = kotlinx.coroutines.runBlocking {
+            com.tianshang.guard.data.local.GuardPreferences(newBase).language.first()
+        }
+        val wrappedContext = LocaleHelper.wrapContext(newBase, language)
+        super.attachBaseContext(wrappedContext)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Apply language setting
-        val language = kotlinx.coroutines.runBlocking { prefs.language.first() }
-        val wrappedContext = LocaleHelper.wrapContext(this, language)
-        applyOverrideConfiguration(wrappedContext.resources.configuration)
 
         setContent {
             TianshangGuardTheme {
