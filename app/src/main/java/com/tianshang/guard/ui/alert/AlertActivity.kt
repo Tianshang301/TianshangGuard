@@ -22,7 +22,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -87,7 +92,9 @@ class AlertActivity : ComponentActivity(), KoinComponent {
                         sender = smsSender ?: "unknown",
                         body = smsBody ?: "",
                         onDismiss = { finish() },
-                        onFeedback = { label -> submitFeedback(smsBody ?: "", riskLevel ?: "SUSPICIOUS", label, "sms") }
+                        onFeedback = { label -> submitFeedback(smsBody ?: "", riskLevel ?: "SUSPICIOUS", label, "sms") },
+                        detectionReasons = data?.detectionReasons ?: emptyList(),
+                        mlScore = data?.mlScore
                     )
                     else -> BlockedAlert(domain = domain ?: "unknown", onDismiss = { finish() })
                 }
@@ -200,7 +207,10 @@ fun BlockedAlert(domain: String, onDismiss: () -> Unit = {}) {
 }
 
 @Composable
-fun SmsPhishingAlert(sender: String, body: String, onDismiss: () -> Unit, onFeedback: (FeedbackLabel) -> Unit = {}) {
+fun SmsPhishingAlert(sender: String, body: String, onDismiss: () -> Unit, onFeedback: (FeedbackLabel) -> Unit = {},
+                     detectionReasons: List<String> = emptyList(), mlScore: Float? = null) {
+    var showDetails by remember { mutableStateOf(false) }
+    
     Box(modifier = Modifier.fillMaxSize().background(DeepNavy), contentAlignment = Alignment.Center) {
         Card(modifier = Modifier.fillMaxWidth().padding(24.dp), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = SurfaceDark)) {
             Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -222,6 +232,41 @@ fun SmsPhishingAlert(sender: String, body: String, onDismiss: () -> Unit, onFeed
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(stringResource(R.string.alert_sms_phishing_message), style = MaterialTheme.typography.bodySmall, color = GuardRed, textAlign = TextAlign.Center)
+                
+                // Detection details section
+                if (detectionReasons.isNotEmpty() || mlScore != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    TextButton(onClick = { showDetails = !showDetails }) {
+                        Text(
+                            if (showDetails) stringResource(R.string.alert_hide_details) else stringResource(R.string.alert_show_details),
+                            color = OnSurfaceVariantDark
+                        )
+                    }
+                    
+                    if (showDetails) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp), colors = CardDefaults.cardColors(containerColor = SurfaceVariantDark)) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                if (mlScore != null) {
+                                    Text(
+                                        stringResource(R.string.alert_ml_score, String.format("%.2f", mlScore)),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = OnSurfaceDark
+                                    )
+                                }
+                                detectionReasons.forEach { reason ->
+                                    Text(
+                                        "• $reason",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = OnSurfaceDark,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                
                 Spacer(modifier = Modifier.height(20.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(onClick = { onFeedback(FeedbackLabel.FALSE_POSITIVE); onDismiss() }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = SurfaceVariantDark)) {

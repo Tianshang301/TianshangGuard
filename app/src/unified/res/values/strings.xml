@@ -140,6 +140,11 @@
     <string name="feedback_false_positive">误报</string>
     <string name="feedback_confirm_phishing">确认诈骗</string>
 
+    <!-- Alert Details (v1.3.x) -->
+    <string name="alert_show_details">查看详情</string>
+    <string name="alert_hide_details">隐藏详情</string>
+    <string name="alert_ml_score">ML 评分: %s</string>
+
     <!-- Report Screen -->
     <string name="report_screen_title">举报</string>
     <string name="report_screen_subtitle">提交可疑域名帮助我们完善防护</string>

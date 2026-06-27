@@ -17,6 +17,11 @@ class FeatureExtractor {
         "公安", "法院", "检察院", "纪委", "监察", "通缉", "协查"
     )
 
+    private val moneySymbols = listOf("$", "€", "£", "¥", "₹", "₽", "₩")
+    private val emojiPattern = Regex("[\\x{1F600}-\\x{1F64F}\\x{1F300}-\\x{1F5FF}\\x{1F680}-\\x{1F6FF}\\x{1F1E0}-\\x{1F1FF}\\x{2702}-\\x{27B0}\\x{24C2}-\\x{1F251}]")
+    private val ipPattern = Regex("\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b")
+    private val urlPattern = Regex("https?://[^\\s]+")
+
     fun extractFeatures(text: String): FeatureVector {
         val textLength = text.length
         val urlCount = countUrls(text)
@@ -27,6 +32,24 @@ class FeatureExtractor {
         val senderType = detectSenderType(text)
         val language = detectLanguage(text)
 
+        // New features
+        val specialCharRatio = calculateSpecialCharRatio(text)
+        val digitRatio = calculateDigitRatio(text)
+        val avgWordLength = calculateAvgWordLength(text)
+        val exclamationCount = text.count { it == '!' || it == '！' }
+        val questionCount = text.count { it == '?' || it == '？' }
+        val uppercaseRatio = calculateUppercaseRatio(text)
+        val repeatedCharCount = calculateRepeatedCharCount(text)
+        val linkCount = urlPattern.findAll(text).count()
+        val ipAddressCount = ipPattern.findAll(text).count()
+        val chineseCharRatio = calculateChineseCharRatio(text)
+        val emojiCount = emojiPattern.findAll(text).count()
+        val moneySymbolCount = moneySymbols.sumOf { symbol -> text.count { it.toString() == symbol } }
+        val urgencyWordCount = urgencyKeywords.count { text.contains(it) }
+        val threatWordCount = threatKeywords.count { text.contains(it) }
+        val financialWordCount = financialKeywords.count { text.contains(it) }
+        val sentimentScore = calculateSentimentScore(text)
+
         return FeatureVector(
             textLength = textLength,
             urlCount = urlCount,
@@ -35,7 +58,23 @@ class FeatureExtractor {
             hasUrgencyKeywords = hasUrgencyKeywords,
             hasThreatKeywords = hasThreatKeywords,
             senderType = senderType,
-            language = language
+            language = language,
+            specialCharRatio = specialCharRatio,
+            digitRatio = digitRatio,
+            avgWordLength = avgWordLength,
+            exclamationCount = exclamationCount,
+            questionCount = questionCount,
+            uppercaseRatio = uppercaseRatio,
+            repeatedCharCount = repeatedCharCount,
+            linkCount = linkCount,
+            ipAddressCount = ipAddressCount,
+            chineseCharRatio = chineseCharRatio,
+            emojiCount = emojiCount,
+            moneySymbolCount = moneySymbolCount,
+            urgencyWordCount = urgencyWordCount,
+            threatWordCount = threatWordCount,
+            financialWordCount = financialWordCount,
+            sentimentScore = sentimentScore
         )
     }
 
@@ -45,7 +84,6 @@ class FeatureExtractor {
     }
 
     private fun containsPhoneNumber(text: String): Boolean {
-        // BUGFIX: Add word boundary to avoid matching URLs/timestamps
         val phonePattern = Regex("(?<!\\d)1[3-9]\\d{9}(?!\\d)")
         return phonePattern.containsMatchIn(text)
     }
@@ -67,5 +105,56 @@ class FeatureExtractor {
     private fun detectLanguage(text: String): FeatureVector.Language {
         val hasChinese = text.any { it in '\u4E00'..'\u9FFF' }
         return if (hasChinese) FeatureVector.Language.CHINESE else FeatureVector.Language.ENGLISH
+    }
+
+    private fun calculateSpecialCharRatio(text: String): Float {
+        if (text.isEmpty()) return 0f
+        val specialChars = text.count { !it.isLetterOrDigit() && !it.isWhitespace() }
+        return specialChars.toFloat() / text.length
+    }
+
+    private fun calculateDigitRatio(text: String): Float {
+        if (text.isEmpty()) return 0f
+        return text.count { it.isDigit() }.toFloat() / text.length
+    }
+
+    private fun calculateAvgWordLength(text: String): Float {
+        val words = text.split(Regex("\\s+")).filter { it.isNotEmpty() }
+        if (words.isEmpty()) return 0f
+        return words.sumOf { it.length }.toFloat() / words.size
+    }
+
+    private fun calculateUppercaseRatio(text: String): Float {
+        val letters = text.filter { it.isLetter() }
+        if (letters.isEmpty()) return 0f
+        return letters.count { it.isUpperCase() }.toFloat() / letters.length
+    }
+
+    private fun calculateRepeatedCharCount(text: String): Int {
+        if (text.length < 2) return 0
+        var count = 0
+        for (i in 1 until text.length) {
+            if (text[i] == text[i - 1]) count++
+        }
+        return count
+    }
+
+    private fun calculateChineseCharRatio(text: String): Float {
+        if (text.isEmpty()) return 0f
+        return text.count { it in '\u4E00'..'\u9FFF' }.toFloat() / text.length
+    }
+
+    private fun calculateSentimentScore(text: String): Float {
+        // Simple rule-based sentiment (0 = negative, 1 = positive)
+        val negativeWords = listOf("危险", "警告", "威胁", "风险", "诈骗", "违法", "犯罪", "冻结", "锁定")
+        val positiveWords = listOf("安全", "保护", "正常", "成功", "已验证", "已确认")
+        
+        val negCount = negativeWords.count { text.contains(it) }
+        val posCount = positiveWords.count { text.contains(it) }
+        
+        return when {
+            negCount + posCount == 0 -> 0.5f  // Neutral
+            else -> posCount.toFloat() / (negCount + posCount)
+        }
     }
 }

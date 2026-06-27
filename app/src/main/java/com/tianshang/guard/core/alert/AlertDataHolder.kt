@@ -32,6 +32,10 @@ object AlertDataHolder {
         val smsBody: String? = null,
         val riskLevel: String? = null,
         val level: String? = null,
-        val requireConfirm: Boolean = false
+        val requireConfirm: Boolean = false,
+        // Detection reasons (v1.3.x)
+        val detectionReasons: List<String> = emptyList(),
+        val mlScore: Float? = null,
+        val features: Map<String, String> = emptyMap()
     )
 }

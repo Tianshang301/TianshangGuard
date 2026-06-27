@@ -486,8 +486,6 @@ class PhishingCSVDataset(Dataset):
     def __init__(self, csv_path: str, split: str = "train", val_ratio: float = 0.1, seed: int = 42, max_seq_len: int = 512, use_raw_text: bool = False, augment: bool = False):
         self.max_seq_len = max_seq_len
         self.augment = augment and (split == "train")
-    def __init__(self, csv_path: str, split: str = "train", val_ratio: float = 0.1, seed: int = 42, max_seq_len: int = 512, use_raw_text: bool = False):
-        self.max_seq_len = max_seq_len
         import pandas as pd
         cols = ["text", "label", "URL", "Title", "source"] if use_raw_text else ["text", "label", "URL", "Title"]
         try:

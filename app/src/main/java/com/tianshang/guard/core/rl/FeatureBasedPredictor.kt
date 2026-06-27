@@ -14,9 +14,20 @@ class FeatureBasedPredictor(
         val featureArray = features.toFloatArray()
 
         // Calculate cosine similarity with all stored feature vectors
-        val similarities = allVectors.map { (storedFeatures, label) ->
+        val similarities = allVectors.mapNotNull { (storedFeatures, label) ->
             val storedArray = storedFeatures.toFloatArray()
-            val similarity = cosineSimilarity(featureArray, storedArray)
+            
+            // Handle dimension mismatch (backward compatibility)
+            val similarity = if (featureArray.size == storedArray.size) {
+                cosineSimilarity(featureArray, storedArray)
+            } else {
+                // Compare only the common dimensions (first 8)
+                val commonSize = minOf(featureArray.size, storedArray.size, FeatureVector.LEGACY_DIMENSIONS)
+                cosineSimilarity(
+                    featureArray.copyOfRange(0, commonSize),
+                    storedArray.copyOfRange(0, commonSize)
+                )
+            }
             Pair(similarity, label)
         }
 

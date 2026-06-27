@@ -131,7 +131,7 @@ dependencies {
 
     implementation(libs.datastore.preferences)
 
-    // implementation(libs.sqlcipher)
+    implementation(libs.sqlcipher)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

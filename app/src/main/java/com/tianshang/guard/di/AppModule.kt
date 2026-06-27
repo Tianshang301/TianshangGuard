@@ -4,6 +4,7 @@ import com.tianshang.guard.core.alert.AlertEngine
 import com.tianshang.guard.core.alert.TieredAlertEngine
 import com.tianshang.guard.core.calibration.ThresholdCalibrator
 import com.tianshang.guard.core.dns.DnsEngine
+import com.tianshang.guard.core.dns.DohClient
 import com.tianshang.guard.core.dns.HomographDetector
 import com.tianshang.guard.core.dns.LocalDnsEngine
 import com.tianshang.guard.core.feedback.FeedbackEngine
@@ -60,6 +61,9 @@ val appModule = module {
             .build()
     }
     single { get<retrofit2.Retrofit>().create(GithubRulesApi::class.java) }
+
+    // ── DoH (DNS over HTTPS) Client ────────────────────────
+    single { DohClient(get()) }
 
     // ── Core Engine Layer ───────────────────────────────────
     single<AlertEngine> { TieredAlertEngine(androidContext(), get(), get()) }
