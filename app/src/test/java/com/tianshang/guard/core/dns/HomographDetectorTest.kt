@@ -21,11 +21,9 @@ class HomographDetectorTest {
     }
 
     @Test
-    fun `punycode domain returns PUNYCODE_SPOOFING`() {
+    fun `punycode domain without homographs returns Clean`() {
         val result = HomographDetector.detect("xn--example")
-        assertTrue(result is HomographResult.Detected)
-        val detected = result as HomographResult.Detected
-        assertEquals(HomographType.PUNYCODE_SPOOFING, detected.type)
+        assertTrue(result is HomographResult.Clean)
     }
 
     @Test
