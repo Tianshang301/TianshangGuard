@@ -38,7 +38,7 @@ jobs:
         run: ./gradlew ktlintCheck --no-daemon || echo "ktlint not configured, skipping"
 
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest --no-daemon
+        run: ./gradlew testZhDebugUnitTest --no-daemon
 
       - name: Build Zh Debug
         run: ./gradlew assembleZhDebug --no-daemon
