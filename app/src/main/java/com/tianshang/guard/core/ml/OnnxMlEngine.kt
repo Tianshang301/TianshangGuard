@@ -133,4 +133,20 @@ class OnnxMlEngine(private val context: Context) : MlEngine {
     }
 
     override fun isModelLoaded(type: ModelType): Boolean = sessions.containsKey(type)
+
+    /**
+     * Close all ONNX sessions and release native resources.
+     * Should be called when the engine is no longer needed.
+     */
+    fun close() {
+        sessions.values.forEach { session ->
+            try {
+                session.close()
+            } catch (e: Exception) {
+                SecureLog.e("OnnxMlEngine", "Error closing session", e)
+            }
+        }
+        sessions.clear()
+        SecureLog.i("OnnxMlEngine", "All ONNX sessions closed")
+    }
 }

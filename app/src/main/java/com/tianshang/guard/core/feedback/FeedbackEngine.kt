@@ -1,5 +1,6 @@
 package com.tianshang.guard.core.feedback
 
+import com.tianshang.guard.core.retrieval.KnowledgeBase
 import com.tianshang.guard.core.rl.FeatureExtractor
 import com.tianshang.guard.core.rl.FeatureStore
 import com.tianshang.guard.data.local.database.FeedbackDao
@@ -13,7 +14,8 @@ import java.security.MessageDigest
 class FeedbackEngine(
     private val feedbackDao: FeedbackDao,
     private val featureExtractor: FeatureExtractor,
-    private val featureStore: FeatureStore
+    private val featureStore: FeatureStore,
+    private val knowledgeBase: KnowledgeBase
 ) {
 
     private val ioScope = CoroutineScope(Dispatchers.IO)
@@ -34,6 +36,9 @@ class FeedbackEngine(
             )
             feedbackDao.insert(feedback)
             enforceLimit()
+
+            // Add to BM25 dynamic index for retrieval augmentation
+            knowledgeBase.addFeedback(text, label == FeedbackLabel.PHISHING)
         }
     }
 

@@ -28,6 +28,23 @@ class KnowledgeBase(private val context: Context) {
         }
     }
 
+    /**
+     * Add a feedback document to the dynamic index.
+     * This allows user feedback to influence future BM25 queries.
+     */
+    fun addFeedback(text: String, isPhishing: Boolean) {
+        bm25Engine.addFeedbackDocument(text, isPhishing)
+        SecureLog.i("KnowledgeBase", "Added feedback document, total feedback docs: ${bm25Engine.getFeedbackDocCount()}")
+    }
+
+    /**
+     * Clear all feedback documents from the dynamic index.
+     */
+    fun clearFeedback() {
+        bm25Engine.clearFeedbackIndex()
+        SecureLog.i("KnowledgeBase", "Cleared feedback index")
+    }
+
     fun query(text: String, topK: Int = 10): Bm25Engine.RetrievalResult {
         return bm25Engine.query(text, topK)
     }

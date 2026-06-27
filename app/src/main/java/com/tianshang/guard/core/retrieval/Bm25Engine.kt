@@ -4,6 +4,7 @@ import com.tianshang.guard.core.util.SecureLog
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.Inflater
 
 class Bm25Engine {
@@ -12,6 +13,11 @@ class Bm25Engine {
     private var docLabels: ByteArray = ByteArray(0)
     private var index: Map<String, List<Posting>> = emptyMap()
     private var isLoaded: Boolean = false
+
+    // Dynamic feedback index for runtime updates
+    private val feedbackIndex = ConcurrentHashMap<String, MutableList<Posting>>()
+    private var feedbackDocCount = 0
+    private val maxFeedbackDocs = 2000
 
     data class Posting(val docId: Int, val score: Int)
     data class RetrievalResult(val phishingRatio: Float, val topK: Int, val matchCount: Int)
@@ -58,14 +64,40 @@ class Bm25Engine {
         }
     }
 
+    /**
+     * Add a feedback document to the dynamic index.
+     * Uses a separate feedback index to avoid modifying the static index.
+     */
+    fun addFeedbackDocument(text: String, isPhishing: Boolean) {
+        if (feedbackDocCount >= maxFeedbackDocs) return
+
+        val docId = docCount + feedbackDocCount
+        val tokens = tokenize(text)
+        val score = if (isPhishing) 100 else 10
+
+        for (token in tokens) {
+            feedbackIndex.getOrPut(token) { mutableListOf() }.add(Posting(docId, score))
+        }
+        feedbackDocCount++
+    }
+
     fun query(text: String, topK: Int = 10): RetrievalResult {
         if (!isLoaded || docCount == 0) return RetrievalResult(0f, 0, 0)
 
         val tokens = tokenize(text)
         val docScores = mutableMapOf<Int, Int>() // docId -> cumulative score
 
+        // Query static index
         for (token in tokens) {
             val postings = index[token] ?: continue
+            for (posting in postings) {
+                docScores[posting.docId] = (docScores[posting.docId] ?: 0) + posting.score
+            }
+        }
+
+        // Query dynamic feedback index
+        for (token in tokens) {
+            val postings = feedbackIndex[token] ?: continue
             for (posting in postings) {
                 docScores[posting.docId] = (docScores[posting.docId] ?: 0) + posting.score
             }
@@ -80,7 +112,14 @@ class Bm25Engine {
 
         // Count phishing in top-K
         val phishingCount = topDocs.count { (docId, _) ->
-            docId < docLabels.size && docLabels[docId].toInt() == 1
+            if (docId < docCount) {
+                // Static document
+                docId < docLabels.size && docLabels[docId].toInt() == 1
+            } else {
+                // Feedback document - check if score indicates phishing
+                val feedbackScore = docScores[docId] ?: 0
+                feedbackScore >= 50
+            }
         }
 
         val matchCount = topDocs.size
@@ -91,7 +130,14 @@ class Bm25Engine {
 
     fun isReady(): Boolean = isLoaded
 
-    fun getDocCount(): Int = docCount
+    fun getDocCount(): Int = docCount + feedbackDocCount
+
+    fun getFeedbackDocCount(): Int = feedbackDocCount
+
+    fun clearFeedbackIndex() {
+        feedbackIndex.clear()
+        feedbackDocCount = 0
+    }
 
     private fun tokenize(text: String): List<String> {
         val tokens = mutableListOf<String>()
@@ -133,7 +179,6 @@ class Bm25Engine {
     private fun decompressZlib(data: ByteArray): ByteArray {
         val inflater = Inflater()
         inflater.setInput(data)
-        // BUGFIX: Use ByteArrayOutputStream instead of MutableList<Byte> (16x less memory)
         val outputStream = java.io.ByteArrayOutputStream()
         val buffer = ByteArray(4096)
         while (!inflater.finished()) {

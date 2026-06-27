@@ -86,7 +86,8 @@ class AlertActivity : ComponentActivity(), KoinComponent {
                     )
                     "SUSPICIOUS_DOMAIN" -> SuspiciousDomainAlert(
                         domain = domain ?: "unknown",
-                        onDismiss = { finish() }
+                        onDismiss = { finish() },
+                        onFeedback = { label -> submitFeedback(domain ?: "", riskLevel ?: "SUSPICIOUS", label, "domain") }
                     )
                     "SMS_PHISHING" -> SmsPhishingAlert(
                         sender = smsSender ?: "unknown",
@@ -175,17 +176,34 @@ fun PhishingAlert(url: String, onDismiss: () -> Unit, onReturn: () -> Unit, onFe
 }
 
 @Composable
-fun SuspiciousDomainAlert(domain: String, onDismiss: () -> Unit) {
+fun SuspiciousDomainAlert(domain: String, onDismiss: () -> Unit, onFeedback: (FeedbackLabel) -> Unit = {}) {
     Card(modifier = Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = GuardRed.copy(alpha = 0.15f))) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("\u26A0\uFE0F", fontSize = 24.sp)
-            Spacer(modifier = Modifier.size(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(stringResource(R.string.alert_suspicious_domain_title), style = MaterialTheme.typography.titleSmall, color = GuardRed)
-                Text(domain, style = MaterialTheme.typography.bodyMedium, color = OnSurfaceDark)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("\u26A0\uFE0F", fontSize = 24.sp)
+                Spacer(modifier = Modifier.size(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.alert_suspicious_domain_title), style = MaterialTheme.typography.titleSmall, color = GuardRed)
+                    Text(domain, style = MaterialTheme.typography.bodyMedium, color = OnSurfaceDark)
+                }
             }
-            Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = GuardRed)) {
-                Text(stringResource(R.string.button_confirm))
+            Spacer(modifier = Modifier.height(12.dp))
+            // Feedback buttons
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { onFeedback(FeedbackLabel.FALSE_POSITIVE); onDismiss() },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceVariantDark)
+                ) {
+                    Text(stringResource(R.string.feedback_false_positive), color = OnSurfaceDark)
+                }
+                Button(
+                    onClick = { onFeedback(FeedbackLabel.PHISHING); onDismiss() },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = GuardRed)
+                ) {
+                    Text(stringResource(R.string.feedback_confirm_phishing))
+                }
             }
         }
     }
