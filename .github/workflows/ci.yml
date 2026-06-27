@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,27 +27,5 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Cache Gradle
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/libs.versions.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: Check formatting (ktlint)
-        run: ./gradlew ktlintCheck --no-daemon || echo "ktlint not configured, skipping"
-
       - name: Run unit tests
         run: ./gradlew testZhDebugUnitTest --no-daemon
-
-      - name: Build Zh Debug
-        run: ./gradlew assembleZhDebug --no-daemon
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-zh-debug
-          path: app/build/outputs/apk/zh/debug/app-zh-debug.apk
