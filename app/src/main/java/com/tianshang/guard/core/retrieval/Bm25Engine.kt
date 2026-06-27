@@ -1,5 +1,6 @@
 package com.tianshang.guard.core.retrieval
 
+import com.tianshang.guard.core.util.SecureLog
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -52,7 +53,7 @@ class Bm25Engine {
             isLoaded = true
             true
         } catch (e: Exception) {
-            android.util.Log.e("Bm25Engine", "Failed to load index", e)
+            SecureLog.e("Bm25Engine", "Failed to load index", e)
             false
         }
     }
