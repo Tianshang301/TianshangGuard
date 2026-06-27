@@ -109,13 +109,16 @@ class DnsPacketHandler {
         val udpOffset = ipHeaderLen
         val dnsOffset = ipHeaderLen + 8
 
-        // DPH-05: Validate totalLen against actual buffer size
-        val totalLen = query.getShort(2).toInt() and 0xFFFF
+        // BUGFIX: Read totalLen from correct offset for IPv4 vs IPv6
+        val totalLen = if (version == 4) {
+            query.getShort(2).toInt() and 0xFFFF
+        } else {
+            (query.getShort(4).toInt() and 0xFFFF) + ipHeaderLen
+        }
         val actualLen = query.remaining()
         val safeLen = minOf(totalLen, actualLen)
-        if (safeLen < dnsOffset + 12) return ByteBuffer.allocate(0) // Too short
+        if (safeLen < dnsOffset + 12) return ByteBuffer.allocate(0)
 
-        // DPH-06: Validate DNS header access
         if (query.remaining() < dnsOffset + 12) return ByteBuffer.allocate(0)
 
         val response = ByteBuffer.allocate(safeLen)
@@ -145,11 +148,13 @@ class DnsPacketHandler {
         response.putShort(dnsOffset + 8, 0)
         response.putShort(dnsOffset + 10, 0)
 
-        // Recalculate IP checksum (IPv4 only)
+        // BUGFIX: Update length field for both IPv4 and IPv6
         if (version == 4) {
             response.putShort(2, safeLen.toShort())
             response.putShort(10, 0)
             response.putShort(10, computeIpChecksum(response, ipHeaderLen))
+        } else {
+            response.putShort(4, (safeLen - ipHeaderLen).toShort())
         }
 
         // Clear UDP checksum
@@ -179,7 +184,12 @@ class DnsPacketHandler {
         swapIpAddresses(response, version)
 
         // Update total length
-        response.putShort(2, newTotalLen.toShort())
+        // BUGFIX: Write to correct offset for IPv4 vs IPv6
+        if (version == 4) {
+            response.putShort(2, newTotalLen.toShort())
+        } else {
+            response.putShort(4, udpPayloadLen.toShort())
+        }
 
         // Recalculate IP checksum (IPv4 only)
         if (version == 4) {

@@ -39,7 +39,6 @@ object HomographDetector {
         "icbc" to listOf("1cbc", "ic8c", "lcbc", "iсbc"),
         "baidu" to listOf("ba1du", "baidü", "baіdu"),
         "jd" to listOf("jд", "jdсom"),
-        "taobao" to listOf("ta0bao", "tao-bao"),
         "pinduoduo" to listOf("p1nduoduo", "pinduo-duo")
     )
 

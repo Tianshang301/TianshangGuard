@@ -7,10 +7,12 @@ import com.tianshang.guard.core.alert.TieredAlertEngine
 import com.tianshang.guard.core.ml.MlEngine
 import com.tianshang.guard.core.ml.RiskLevel
 import com.tianshang.guard.domain.AnalyzeSmsUseCase
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class SmsAnalysisResult(
     val sender: String,
@@ -28,9 +30,12 @@ class SmsViewModel(
     val result: StateFlow<SmsAnalysisResult> = _result.asStateFlow()
 
     fun analyze(sender: String, body: String) {
-        viewModelScope.launch {
+        // BUGFIX: Run ML inference on IO dispatcher to avoid blocking main thread
+        viewModelScope.launch(Dispatchers.IO) {
             val riskLevel = analyzeSmsUseCase.execute(sender, body)
-            _result.value = SmsAnalysisResult(sender, body, riskLevel, true)
+            withContext(Dispatchers.Main) {
+                _result.value = SmsAnalysisResult(sender, body, riskLevel, true)
+            }
             if (riskLevel == RiskLevel.DANGEROUS || riskLevel == RiskLevel.SUSPICIOUS) {
                 // Manual analysis: no cooldown, always show warning
                 if (alertEngine is TieredAlertEngine) {

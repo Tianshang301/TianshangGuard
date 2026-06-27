@@ -1,7 +1,7 @@
 # TianshangGuard 技术文档
 
 > **包名**: `com.tianshang.guard`  
-> **版本**: v1.1.0  
+> **版本**: v1.2.2  
 > **协议**: MIT  
 > **信念**: "如果能少一人受骗，这个项目就有意义。"
 
@@ -1821,7 +1821,36 @@ class RuleUpdateWorker(
 
 ---
 
-## 10. 附录
+## 10. 安全审计记录
+
+### 10.1 v1.2.2 全量代码审计 (2026-06-28)
+
+**审计范围**: 全部核心模块（DNS 引擎、ML 引擎、数据层、UI 层）  
+**发现 Bug 总数**: 59 个（12 Critical, 18 High, 26 Medium, 9 Low）  
+**已修复**: 26 个（P0 + P1 全部修复）  
+**状态**: ✅ Build successful, ADB verified
+
+#### 关键修复清单
+
+| 模块 | 关键修复 |
+|------|---------|
+| **ML 引擎** | BertTokenizer 字节截断修复、ONNX 资源泄漏修复、RiskLevel.toScore() 区间中点、回退方法正确选择、超时重试机制 |
+| **VPN 服务** | handlerThread 每次重建、restartVpn 设置 running=false、DNS 缓存锁优化 |
+| **DNS 引擎** | IPv6 响应偏移修复、MurmurHash3 级联修复、同形字符重复 key 移除、Levenshtein 预过滤 |
+| **线程安全** | PerformanceTracer→ConcurrentHashMap、MlEngineWithFallback→synchronizedMap、LocalDnsEngine→@Volatile |
+| **UI 层** | SmsViewModel IO 调度器、SettingsScreen 开关去重、BlockedAlert 关闭按钮 |
+| **数据层** | ThresholdCalibrator 阈值下探、日语关键词修正、Bm25Engine 解压缩优化 |
+
+#### 遗留问题（P2，下个版本修复）
+
+- AlertDataHolder 需要 SavedInstanceState 支持
+- batteryOptimized 状态需要 LifecycleEventObserver
+- 数据库 DAO 需要改为 suspend fun（当前依赖 allowMainThreadQueries）
+- 数据库缺少迁移策略（当前使用 fallbackToDestructiveMigration）
+
+---
+
+## 11. 附录
 
 ### 10.1 术语表
 
