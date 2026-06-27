@@ -1,7 +1,16 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+}
+
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        load(keystorePropertiesFile.inputStream())
+    }
 }
 
 android {
@@ -10,10 +19,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("release.jks")
-            storePassword = "TsGuard@2026Release"
-            keyAlias = "guard"
-            keyPassword = "TsGuard@2026Release"
+            storeFile = file(keystoreProperties.getProperty("storeFile", "release.jks"))
+            storePassword = keystoreProperties.getProperty("storePassword", "")
+            keyAlias = keystoreProperties.getProperty("keyAlias", "guard")
+            keyPassword = keystoreProperties.getProperty("keyPassword", "")
         }
     }
 
