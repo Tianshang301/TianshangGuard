@@ -21,12 +21,17 @@ object AlertDataHolder {
     }
 
     fun consume(key: String): AlertData? {
-        return store.remove(key)
+        val data = store.remove(key)
+        // H-11: Clean up pending runnable to prevent memory leak
+        pendingRunnables.remove(key)?.let { handler.removeCallbacks(it) }
+        return data
     }
 
     fun clear() {
         store.clear()
-        handler.removeCallbacksAndMessages(null)
+        // L-4: Remove only our own callbacks, not all handler callbacks
+        pendingRunnables.values.forEach { handler.removeCallbacks(it) }
+        pendingRunnables.clear()
     }
 
     data class AlertData(

@@ -1,6 +1,7 @@
 package com.tianshang.guard.core.dns
 
 import com.tianshang.guard.core.util.SecureLog
+import okhttp3.CertificatePinner
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -24,12 +25,18 @@ class DohClient(private val client: OkHttpClient) {
         private const val UPSTREAM_DNS = "1.1.1.1"
         private const val UPSTREAM_DNS_PORT = 53
         private val DNS_MEDIA_TYPE = "application/dns-message".toMediaType()
+        // M-13: Cloudflare certificate pins for DoH endpoint
+        private val CERTIFICATE_PINNER = CertificatePinner.Builder()
+            .add("cloudflare-dns.com", "sha256/yio0sMlhW0kS4fJo1pJl0tF6TvG3EKGY0pmMgkGnVY=")
+            .add("cloudflare-dns.com", "sha256/i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY=")
+            .build()
     }
 
     private val dohClient = client.newBuilder()
         .connectTimeout(DOH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .readTimeout(DOH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .writeTimeout(DOH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        .certificatePinner(CERTIFICATE_PINNER)
         .build()
 
     /**

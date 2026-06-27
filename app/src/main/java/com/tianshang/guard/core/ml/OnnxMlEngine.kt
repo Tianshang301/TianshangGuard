@@ -41,7 +41,10 @@ class OnnxMlEngine(private val context: Context) : MlEngine {
             try { addNnapi() } catch (_: Exception) {}
             setIntraOpNumThreads(2)
         }
-        sessions[type] = env.createSession(modelPath, sessionOptions)
+        val newSession = env.createSession(modelPath, sessionOptions)
+        // C-6: Close old session before replacing to prevent native memory leak
+        val oldSession = sessions.put(type, newSession)
+        oldSession?.close()
     }
 
     fun analyzeWithModel(text: String, type: ModelType): RiskLevel {

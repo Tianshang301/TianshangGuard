@@ -79,7 +79,7 @@ class FeatureExtractor {
     }
 
     private fun countUrls(text: String): Int {
-        val urlPattern = Regex("https?://[^\\s]+")
+        // L-3: Reuse class-level urlPattern instead of recompiling
         return urlPattern.findAll(text).count()
     }
 

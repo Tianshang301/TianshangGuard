@@ -139,8 +139,11 @@ class Bm25Engine {
     fun getFeedbackDocCount(): Int = feedbackDocCount
 
     fun clearFeedbackIndex() {
-        feedbackIndex.clear()
-        feedbackDocCount = 0
+        // M-14: Synchronized to prevent race condition with addFeedbackDocument
+        synchronized(feedbackLock) {
+            feedbackIndex.clear()
+            feedbackDocCount = 0
+        }
     }
 
     private fun tokenize(text: String): List<String> {

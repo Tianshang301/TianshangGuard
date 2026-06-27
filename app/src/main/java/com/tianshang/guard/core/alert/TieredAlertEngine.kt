@@ -26,12 +26,16 @@ class TieredAlertEngine(
     // Global rate limiter: max 1 alert per 5 seconds
     @Volatile private var lastGlobalAlertTime = 0L
     private val globalCooldownMs = 5000L
+    private val globalAlertLock = Any()
 
     private fun canLaunchAlert(): Boolean {
-        val now = System.currentTimeMillis()
-        if (now - lastGlobalAlertTime < globalCooldownMs) return false
-        lastGlobalAlertTime = now
-        return true
+        // H-10: Synchronized to prevent duplicate alerts
+        synchronized(globalAlertLock) {
+            val now = System.currentTimeMillis()
+            if (now - lastGlobalAlertTime < globalCooldownMs) return false
+            lastGlobalAlertTime = now
+            return true
+        }
     }
 
     private fun record(type: AlertType, domain: String? = null, url: String? = null, riskLevel: String? = null) {
