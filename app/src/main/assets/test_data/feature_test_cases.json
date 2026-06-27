@@ -1,0 +1,89 @@
+[
+  {
+    "text": "您的银行账户涉嫌洗钱，请配合调查，将资金转入安全账户",
+    "expected_features": {
+      "hasFinancialKeywords": true,
+      "hasUrgencyKeywords": false,
+      "hasThreatKeywords": true,
+      "hasPhoneNumber": false,
+      "urlCount": 0,
+      "language": "CHINESE"
+    }
+  },
+  {
+    "text": "请立即点击 http://phishing.com 验证身份，否则账户将被冻结",
+    "expected_features": {
+      "hasFinancialKeywords": false,
+      "hasUrgencyKeywords": true,
+      "hasThreatKeywords": false,
+      "hasPhoneNumber": false,
+      "urlCount": 1,
+      "language": "CHINESE"
+  },
+  {
+    "text": "联系我：13800138000，领取您的奖金",
+    "expected_features": {
+      "hasFinancialKeywords": false,
+      "hasUrgencyKeywords": false,
+      "hasThreatKeywords": false,
+      "hasPhoneNumber": true,
+      "urlCount": 0,
+      "language": "CHINESE"
+    }
+  },
+  {
+    "text": "Your account has been compromised. Click here to verify: http://phishing-site.com/verify",
+    "expected_features": {
+      "hasFinancialKeywords": false,
+      "hasUrgencyKeywords": true,
+      "hasThreatKeywords": false,
+      "hasPhoneNumber": false,
+      "urlCount": 1,
+      "language": "ENGLISH"
+    }
+  },
+  {
+    "text": "【工商银行】您尾号1234的储蓄卡账户消费人民币150.00元",
+    "expected_features": {
+      "hasFinancialKeywords": true,
+      "hasUrgencyKeywords": false,
+      "hasThreatKeywords": false,
+      "hasPhoneNumber": false,
+      "urlCount": 0,
+      "language": "CHINESE"
+    }
+  },
+  {
+    "text": "【中国移动】尊敬的客户，您本月流量已用完",
+    "expected_features": {
+      "hasFinancialKeywords": false,
+      "hasUrgencyKeywords": false,
+      "hasThreatKeywords": false,
+      "hasPhoneNumber": false,
+      "urlCount": 0,
+      "language": "CHINESE"
+    }
+  },
+  {
+    "text": "恭喜您中奖！请联系客服 400-123-4567 领取",
+    "expected_features": {
+      "hasFinancialKeywords": false,
+      "hasUrgencyKeywords": false,
+      "hasThreatKeywords": false,
+      "hasPhoneNumber": true,
+      "urlCount": 0,
+      "language": "CHINESE"
+    }
+  },
+  {
+    "text": "您的贷款申请已通过，额度50000元，请点击提现",
+    "expected_features": {
+      "hasFinancialKeywords": true,
+      "hasUrgencyKeywords": false,
+      "hasThreatKeywords": false,
+      "hasPhoneNumber": false,
+      "urlCount": 0,
+      "language": "CHINESE"
+    }
+  }
+]

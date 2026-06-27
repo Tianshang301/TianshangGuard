@@ -1,0 +1,134 @@
+[
+  {
+    "domain": "baidu.com",
+    "expected_result": "ALLOW",
+    "category": "whitelist",
+    "reason": "major search engine"
+  },
+  {
+    "domain": "google.com",
+    "expected_result": "ALLOW",
+    "category": "whitelist",
+    "reason": "major search engine"
+  },
+  {
+    "domain": "alipay.com",
+    "expected_result": "ALLOW",
+    "category": "whitelist",
+    "reason": "major payment platform"
+  },
+  {
+    "domain": "taobao.com",
+    "expected_result": "ALLOW",
+    "category": "whitelist",
+    "reason": "major ecommerce"
+  },
+  {
+    "domain": "github.com",
+    "expected_result": "ALLOW",
+    "category": "whitelist",
+    "reason": "code hosting"
+  },
+  {
+    "domain": "phishing-example.com",
+    "expected_result": "BLOCK",
+    "category": "blacklist",
+    "reason": "known phishing"
+  },
+  {
+    "domain": "secure-bank-login.com",
+    "expected_result": "BLOCK",
+    "category": "blacklist",
+    "reason": "phishing"
+  },
+  {
+    "domain": "account-verify-alipay.com",
+    "expected_result": "BLOCK",
+    "category": "blacklist",
+    "reason": "phishing"
+  },
+  {
+    "domain": "wechat-security-center.com",
+    "expected_result": "BLOCK",
+    "category": "blacklist",
+    "reason": "phishing"
+  },
+  {
+    "domain": "10086-reward.top",
+    "expected_result": "BLOCK",
+    "category": "blacklist",
+    "reason": "phishing"
+  },
+  {
+    "domain": "paypal-verification.com",
+    "expected_result": "BLOCK",
+    "category": "blacklist",
+    "reason": "phishing"
+  },
+  {
+    "domain": "icloud-activation.net",
+    "expected_result": "BLOCK",
+    "category": "blacklist",
+    "reason": "phishing"
+  },
+  {
+    "domain": "tаobao.com",
+    "expected_result": "BLOCK",
+    "category": "homograph",
+    "reason": "Cyrillic 'а' instead of Latin 'a'"
+  },
+  {
+    "domain": "gооgle.com",
+    "expected_result": "BLOCK",
+    "category": "homograph",
+    "reason": "Cyrillic 'о' instead of Latin 'o'"
+  },
+  {
+    "domain": "аpple.com",
+    "expected_result": "BLOCK",
+    "category": "homograph",
+    "reason": "Cyrillic 'а' instead of Latin 'a'"
+  },
+  {
+    "domain": "xn--pypal-4ve.com",
+    "expected_result": "BLOCK",
+    "category": "punycode",
+    "reason": "punycode homograph"
+  },
+  {
+    "domain": "normal-website.com",
+    "expected_result": "ALLOW",
+    "category": "unknown",
+    "reason": "not in any list"
+  },
+  {
+    "domain": "example.org",
+    "expected_result": "ALLOW",
+    "category": "unknown",
+    "reason": "not in any list"
+  },
+  {
+    "domain": "my-bank-login.com",
+    "expected_result": "SUSPICIOUS",
+    "category": "suspicious",
+    "reason": "similar to known phishing pattern"
+  },
+  {
+    "domain": "alipay-secure.com",
+    "expected_result": "SUSPICIOUS",
+    "category": "suspicious",
+    "reason": "similar to alipay.com"
+  },
+  {
+    "domain": "taobao-login.com",
+    "expected_result": "SUSPICIOUS",
+    "category": "suspicious",
+    "reason": "similar to taobao.com"
+  },
+  {
+    "domain": "icbc-safe.com",
+    "expected_result": "SUSPICIOUS",
+    "category": "suspicious",
+    "reason": "similar to icbc.com.cn"
+  }
+]
