@@ -14,17 +14,20 @@ interface DomainDao {
     @Query("SELECT * FROM domains WHERE category = 'BLACKLIST'")
     fun getBlacklist(): Flow<List<DomainEntity>>
 
+    // BUGFIX: Changed to suspend fun to avoid main thread queries
     @Query("SELECT EXISTS(SELECT 1 FROM domains WHERE domain = :domain AND category = 'WHITELIST')")
-    fun isWhitelisted(domain: String): Boolean
+    suspend fun isWhitelisted(domain: String): Boolean
 
+    // BUGFIX: Changed to suspend fun to avoid main thread queries
     @Query("SELECT EXISTS(SELECT 1 FROM domains WHERE domain = :domain AND category = 'BLACKLIST')")
-    fun isBlacklisted(domain: String): Boolean
+    suspend fun isBlacklisted(domain: String): Boolean
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(domain: DomainEntity)
 
+    // BUGFIX: Changed to suspend fun to avoid main thread queries
     @Query("SELECT domain FROM domains WHERE category IN ('WHITELIST', 'BLACKLIST')")
-    fun getKnownDomains(): List<String>
+    suspend fun getKnownDomains(): List<String>
 
     @Query("DELETE FROM domains")
     suspend fun clearAll()

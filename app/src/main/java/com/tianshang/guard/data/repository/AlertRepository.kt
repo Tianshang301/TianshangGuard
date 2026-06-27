@@ -17,11 +17,13 @@ class AlertRepository(private val alertDao: AlertDao) {
         return alertDao.getRecentAlerts(limit)
     }
 
-    fun getBlockedCount(): Int {
+    // BUGFIX: Changed to suspend fun to avoid main thread queries
+    suspend fun getBlockedCount(): Int {
         return alertDao.getBlockedCount()
     }
 
-    fun getCountByType(type: String): Int {
+    // BUGFIX: Changed to suspend fun to avoid main thread queries
+    suspend fun getCountByType(type: String): Int {
         return alertDao.getCountByType(type)
     }
 
@@ -37,11 +39,13 @@ class AlertRepository(private val alertDao: AlertDao) {
         return alertDao.getCountByTypeSince(type, since)
     }
 
-    fun getRecentAlertsSync(limit: Int = 1000): List<AlertEntity> {
+    // BUGFIX: Changed to suspend fun to avoid main thread queries
+    suspend fun getRecentAlertsSync(limit: Int = 1000): List<AlertEntity> {
         return alertDao.getRecentAlertsSync(limit)
     }
 
-    fun getAlertsAscSync(limit: Int = 1000): List<AlertEntity> {
+    // BUGFIX: Changed to suspend fun to avoid main thread queries
+    suspend fun getAlertsAscSync(limit: Int = 1000): List<AlertEntity> {
         return alertDao.getAlertsAscSync(limit)
     }
 

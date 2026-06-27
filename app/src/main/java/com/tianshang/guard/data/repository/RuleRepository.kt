@@ -6,15 +6,18 @@ import com.tianshang.guard.data.local.database.DomainEntity
 
 class RuleRepository(private val domainDao: DomainDao) {
 
-    fun isWhitelisted(domain: String): Boolean {
+    // BUGFIX: Changed to suspend fun to avoid main thread queries
+    suspend fun isWhitelisted(domain: String): Boolean {
         return domainDao.isWhitelisted(domain)
     }
 
-    fun isBlacklisted(domain: String): Boolean {
+    // BUGFIX: Changed to suspend fun to avoid main thread queries
+    suspend fun isBlacklisted(domain: String): Boolean {
         return domainDao.isBlacklisted(domain)
     }
 
-    fun getKnownDomains(): List<String> {
+    // BUGFIX: Changed to suspend fun to avoid main thread queries
+    suspend fun getKnownDomains(): List<String> {
         return domainDao.getKnownDomains()
     }
 
