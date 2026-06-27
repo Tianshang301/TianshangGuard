@@ -58,10 +58,12 @@ class SettingsViewModel(
         val alerts = alertRepository.getAlertsAscSync(1000)
         val content = buildString {
             appendLine(context.getString(R.string.export_log_header))
-            appendLine("${context.getString(R.string.export_log_timestamp)} ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}")
+            appendLine(context.getString(R.string.export_log_timestamp) + " " + java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date()))
             appendLine("---")
             for (alert in alerts) {
-                appendLine("[${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(alert.timestamp))}] ${alert.type} | domain=${alert.domain ?: ""} url=${alert.url ?: ""}")
+                val maskedDomain = alert.domain?.let { maskDomain(it) } ?: ""
+                val maskedUrl = alert.url?.let { maskUrl(it) } ?: ""
+                appendLine("[" + java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(alert.timestamp)) + "] " + alert.type + " | domain=" + maskedDomain + " url=" + maskedUrl)
             }
         }
         val intent = Intent(Intent.ACTION_SEND).apply {
@@ -69,6 +71,23 @@ class SettingsViewModel(
             putExtra(Intent.EXTRA_TEXT, content)
         }
         context.startActivity(Intent.createChooser(intent, context.getString(R.string.export_share_chooser_title)))
+    }
+
+    private fun maskDomain(domain: String): String {
+        return domain.split(".").joinToString(".") { label ->
+            if (label.length <= 2) "***"
+            else label.take(2) + "***"
+        }
+    }
+
+    private fun maskUrl(url: String): String {
+        val schemeEnd = url.indexOf("://")
+        if (schemeEnd < 0) return "***"
+        val scheme = url.substring(0, schemeEnd + 3)
+        val rest = url.substring(schemeEnd + 3)
+        val pathStart = rest.indexOf('/')
+        val host = if (pathStart >= 0) rest.substring(0, pathStart) else rest
+        return scheme + maskDomain(host) + if (pathStart >= 0) "/***" else ""
     }
 
     fun clearData() = viewModelScope.launch {

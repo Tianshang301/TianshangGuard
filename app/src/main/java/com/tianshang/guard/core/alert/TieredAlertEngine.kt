@@ -24,7 +24,7 @@ class TieredAlertEngine(
     private val ioScope = CoroutineScope(Dispatchers.IO)
     
     // Global rate limiter: max 1 alert per 5 seconds
-    private var lastGlobalAlertTime = 0L
+    @Volatile private var lastGlobalAlertTime = 0L
     private val globalCooldownMs = 5000L
 
     private fun canLaunchAlert(): Boolean {

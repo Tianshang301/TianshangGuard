@@ -251,7 +251,9 @@ class DnsPacketHandler {
     private fun computeIpChecksum(buffer: ByteBuffer, headerLen: Int): Short {
         var sum = 0L
         for (i in 0 until headerLen step 2) {
-            sum += (buffer.get(i).toInt() and 0xFF) shl 8 or (buffer.get(i + 1).toInt() and 0xFF)
+            val high = buffer.get(i).toInt() and 0xFF
+            val low = if (i + 1 < headerLen) buffer.get(i + 1).toInt() and 0xFF else 0
+            sum += (high shl 8) or low
         }
         while (sum shr 16 != 0L) {
             sum = (sum and 0xFFFF) + (sum shr 16)

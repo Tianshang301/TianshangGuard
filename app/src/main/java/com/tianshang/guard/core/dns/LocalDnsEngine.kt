@@ -7,6 +7,7 @@ import com.tianshang.guard.data.repository.RuleRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -29,6 +30,8 @@ class LocalDnsEngine(
     // BK-tree for efficient domain similarity search
     private var bkTree = BkTree(threshold = 3)
 
+    private var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun resolve(domain: String): DnsResult {
         if (!initialized) {
             return DnsResult.Block(BlockReason.SUSPICIOUS)
@@ -36,9 +39,11 @@ class LocalDnsEngine(
 
         val isWhitelisted = runBlocking { ruleRepository.isWhitelisted(domain) }
         if (isWhitelisted) {
+            // Still check for homograph attacks even on whitelisted domains
             val homographResult = homographDetector.detect(domain)
             if (homographResult is HomographResult.Detected) {
                 alertEngine.showSuspiciousDomainWarning(domain, 0.95f)
+                return DnsResult.Block(BlockReason.SUSPICIOUS)
             }
             alertEngine.notifyVisited(domain)
             return DnsResult.Allow
@@ -116,8 +121,6 @@ class LocalDnsEngine(
         }
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     override fun start() {
         runBlocking {
             val allDomains = ruleRepository.getKnownDomains()
@@ -136,6 +139,8 @@ class LocalDnsEngine(
     override fun stop() {
         initialized = false
         bloomFilter = AdaptiveBloomFilter(100_000, 0.001)
+        scope.cancel()
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
 
     override fun addToWhitelist(domain: String) {

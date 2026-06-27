@@ -185,7 +185,7 @@ class GuardVpnService : VpnService() {
                 }
 
                 if (response != null) {
-                    output.write(response.array(), response.arrayOffset(), response.limit())
+                    output.write(response.array(), response.arrayOffset(), response.remaining())
                 }
             } catch (e: java.io.EOFException) {
                 SecureLog.w("GuardVpnService", "VPN interface closed (EOF)")
@@ -237,13 +237,22 @@ class GuardVpnService : VpnService() {
             val id = (System.currentTimeMillis() and 0xFFFF).toShort()
             val query = ByteBuffer.allocate(512)
             query.putShort(id)
-            query.putShort(0x0100)
-            query.putShort(1); query.putShort(0); query.putShort(0); query.putShort(0)
-            query.put(9); query.put("keepalive".toByteArray(Charsets.US_ASCII))
-            query.put(10); query.put("tianshang".toByteArray(Charsets.US_ASCII))
-            query.put(5); query.put("local".toByteArray(Charsets.US_ASCII))
-            query.put(0)
-            query.putShort(1); query.putShort(1)
+            query.putShort(0x0100) // Standard query, recursion desired
+            query.putShort(1) // QDCOUNT
+            query.putShort(0) // ANCOUNT
+            query.putShort(0) // NSCOUNT
+            query.putShort(0) // ARCOUNT
+
+            // Encode domain: keepalive.tianshang.local
+            val labels = listOf("keepalive", "tianshang", "local")
+            for (label in labels) {
+                query.put(label.length.toByte())
+                query.put(label.toByteArray(Charsets.US_ASCII))
+            }
+            query.put(0) // Root label
+
+            query.putShort(1) // QTYPE: A
+            query.putShort(1) // QCLASS: IN
 
             DatagramSocket().use { socket ->
                 socket.soTimeout = 2000

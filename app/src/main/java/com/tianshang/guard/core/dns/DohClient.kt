@@ -67,11 +67,13 @@ class DohClient(private val client: OkHttpClient) {
                 .build()
 
             val response = dohClient.newCall(request).execute()
-            if (response.isSuccessful) {
-                response.body?.bytes()
-            } else {
-                SecureLog.w("DohClient", "DoH request failed: ${response.code}")
-                null
+            response.use { resp ->
+                if (resp.isSuccessful) {
+                    resp.body?.bytes()
+                } else {
+                    SecureLog.w("DohClient", "DoH request failed: ${resp.code}")
+                    null
+                }
             }
         } catch (e: Exception) {
             SecureLog.w("DohClient", "DoH request error", e)

@@ -81,8 +81,10 @@ class EncryptedDatabaseProvider(private val context: Context) {
                     net.sqlcipher.database.SQLiteDatabase.CREATE_IF_NECESSARY
             )
 
-            // 3. Copy data
-            unencrypted.execSQL("ATTACH DATABASE '${tempFile.absolutePath}' AS encrypted KEY '${passphrase.toString(Charsets.UTF_8)}'")
+            // 3. Copy data using execSQL with sanitized inputs (single quotes escaped)
+            val safePath = tempFile.absolutePath.replace("'", "''")
+            val safePassphrase = String(passphrase, Charsets.UTF_8).replace("'", "''")
+            unencrypted.execSQL("ATTACH DATABASE '$safePath' AS encrypted KEY '$safePassphrase'")
             unencrypted.execSQL("SELECT sqlcipher_export('encrypted')")
             unencrypted.execSQL("DETACH DATABASE encrypted")
 

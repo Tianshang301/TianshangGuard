@@ -58,8 +58,11 @@ class RuleUpdateWorker(
     }
 
     private fun verifySignature(diff: com.tianshang.guard.data.remote.RulesDiff): Boolean {
-        // If no signature provided, allow update (backward compatibility)
-        val signature = diff.signature ?: return true
+        // If no signature provided, reject update (security requirement)
+        val signature = diff.signature ?: run {
+            SecureLog.w("RuleUpdateWorker", "No signature provided, rejecting update")
+            return false
+        }
 
         // Calculate SHA-256 of adds + removes
         val content = (diff.adds + diff.removes).joinToString("\n")

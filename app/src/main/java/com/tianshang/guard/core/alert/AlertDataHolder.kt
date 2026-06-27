@@ -9,10 +9,15 @@ object AlertDataHolder {
 
     private val store = ConcurrentHashMap<String, AlertData>()
     private val handler = Handler(Looper.getMainLooper())
+    private val pendingRunnables = ConcurrentHashMap<String, Runnable>()
 
     fun put(key: String, data: AlertData) {
+        // Remove existing timeout for this key
+        pendingRunnables.remove(key)?.let { handler.removeCallbacks(it) }
         store[key] = data
-        handler.postDelayed({ store.remove(key) }, TTL_MS)
+        val runnable = Runnable { store.remove(key) }
+        pendingRunnables[key] = runnable
+        handler.postDelayed(runnable, TTL_MS)
     }
 
     fun consume(key: String): AlertData? {
