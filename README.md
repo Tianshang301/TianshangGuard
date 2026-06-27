@@ -22,8 +22,28 @@ Open-source Android anti-fraud tool with a layered defense architecture. **All a
 | **SMS Scam Detection** | Multi-model fusion: language detection + SMS specialist + URL extraction |
 | **Behavior Monitoring** | Screen sharing + banking app combination detection |
 | **Tiered Alerts** | Silent log → Banner → Dialog confirmation → Full-screen block |
-| **Rule Updates** | Remote blacklist/whitelist sync, community contributions |
-| **Multi-language** | Chinese (zh), English (en), Japanese (ja) versions |
+| **Rule Updates** | Remote blacklist/whitelist sync with SHA-256 integrity verification |
+| **Database Encryption** | SQLCipher + Android Keystore for local data protection |
+| **DNS Privacy** | DNS over HTTPS (DoH) with UDP fallback |
+| **Multi-language** | Chinese (zh), English (en), Unified (auto-detect) versions |
+
+---
+
+## What's New in v1.3.0-alpha
+
+### Security Hardening
+- **SQLCipher Database Encryption**: User data encrypted with Android Keystore
+- **DNS over HTTPS (DoH)**: DNS queries encrypted via Cloudflare, UDP fallback
+- **Rule Integrity Verification**: SHA-256 signature validation for rule updates
+
+### Model Enhancement
+- **Back-Translation Augmentation**: Chinese → English → Chinese for diverse training data
+- **Feature Vector Expansion**: 8 → 24 dimensions for better phishing detection
+- **Knowledge Distillation**: SMS model trained with Chinese model as teacher
+
+### Experience Optimization
+- **Alert Details**: "Why was this flagged?" shows detection reasons and ML score
+- **Enhanced Statistics**: Trend charts and risk distribution visualization
 
 ---
 
@@ -53,9 +73,9 @@ graph TB
     end
 
     subgraph Data["Data Layer"]
-        N[(Room DB<br/>Domains + Alert Logs)]
+        N[(Room DB<br/>SQLCipher Encrypted)]
         O[ONNX Models<br/>url + chinese + sms]
-        P[Remote Rules<br/>GitHub]
+        P[Remote Rules<br/>GitHub + SHA-256]
     end
 
     A --> G
@@ -92,7 +112,7 @@ flowchart TD
     B -->|Yes| D[SmsReceiver<br/>BroadcastReceiver]
     D --> E[AnalyzeSmsUseCase]
     E --> F[Language Detection]
-    F --> G[Text Model<br/>Chinese/English/Japanese]
+    F --> G[Text Model<br/>Chinese/English]
     F --> H[SMS Specialist Model]
     F --> I[URL Extraction + Model]
     G --> J[maxOf Fusion]
@@ -125,14 +145,14 @@ flowchart TD
 git clone https://github.com/Tianshang301/TianshangGuard.git
 cd TianshangGuard
 
-# Build Chinese version (recommended)
+# Build Chinese version
 ./gradlew assembleZhRelease
 
 # Build English version
 ./gradlew assembleEnRelease
 
-# Build Japanese version
-./gradlew assembleJaRelease
+# Build Unified version (auto-detect language)
+./gradlew assembleUnifiedRelease
 
 # Install to device
 adb install app/build/outputs/apk/zh/release/app-zh-release.apk
@@ -142,13 +162,15 @@ adb install app/build/outputs/apk/zh/release/app-zh-release.apk
 
 | Version | Language | Models Included | Status |
 |---------|----------|-----------------|--------|
-| [v1.1.0-chinese](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.1.0-chinese) | Chinese UI | URL + Chinese + SMS | ✅ Released |
+| [v1.3.0-alpha-english](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.3.0-alpha-english) | English UI | URL + English | ✅ Released |
+| [v1.3.0-alpha-chinese](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.3.0-alpha-chinese) | Chinese UI | URL + Chinese + SMS | ✅ Released |
+| [v1.3.0-alpha-unified](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.3.0-alpha-unified) | Auto-detect | URL + Chinese + English + SMS | ✅ Released |
 
 ---
 
 ## Model Training
 
-The project includes five BytePhishingTransformer models:
+The project includes BytePhishingTransformer models:
 
 | Model | File | Size | Parameters | Training Data | Performance |
 |-------|------|------|------------|---------------|-------------|
@@ -156,12 +178,11 @@ The project includes five BytePhishingTransformer models:
 | Chinese Text | chinese_phishing.onnx | 1,021 KB | 644,865 | ChiFraud (82K cleaned) | AUC=0.9492 |
 | SMS Phishing | sms_phishing.onnx | 312 KB | 120,321 | FBS SMS + ChiFraud (11K) | Recall=97.88% |
 | English Text | english_phishing.onnx | 312 KB | 120,321 | UCI + NCSU + IMC25 | TBD |
-| Japanese Text | japanese_phishing.onnx | 312 KB | 120,321 | Generated Japanese SMS | TBD |
 
 ### Hyperparameters
 
-| Parameter | URL/SMS/EN/JA Model | Chinese Model |
-|-----------|---------------------|---------------|
+| Parameter | URL/SMS/EN Model | Chinese Model |
+|-----------|------------------|---------------|
 | d_model | 64 | 128 |
 | n_heads | 2 | 4 |
 | n_layers | 2 | 4 |
@@ -186,8 +207,8 @@ python train_phishing_model.py --mode sms
 # Train English model
 python train_phishing_model.py --mode english
 
-# Train Japanese model
-python train_phishing_model.py --mode japanese
+# Back-translation augmentation
+python backtranslate_augment.py --input raw_data/chifraud/ --output raw_data/augmented/
 ```
 
 Models are automatically exported as ONNX INT8 quantized and copied to `app/src/main/assets/model/`.
@@ -205,19 +226,6 @@ Current thresholds (deployed):
 - **SUSPICIOUS**: 0.10 – 0.50
 - **DANGEROUS**: ≥ 0.50
 
-### Evaluation
-
-```bash
-# Validate ONNX inference
-python test_onnx_models.py
-
-# Overfitting check
-python check_fitting.py
-
-# Model diagnostics
-python diagnose_model.py
-```
-
 ---
 
 ## Project Structure
@@ -228,15 +236,19 @@ TianshangGuard/
 │   ├── main/
 │   │   ├── java/com/tianshang/guard/
 │   │   │   ├── core/
-│   │   │   │   ├── dns/          # DNS engine, homograph detection, Bloom Filter
+│   │   │   │   ├── dns/          # DNS engine, homograph detection, Bloom Filter, DoH
 │   │   │   │   ├── ml/           # MlEngine, OnnxMlEngine, rule engine
 │   │   │   │   ├── monitor/      # Behavior monitoring (screen sharing)
 │   │   │   │   ├── alert/        # Tiered alert engine
+│   │   │   │   ├── feedback/     # Human feedback system
+│   │   │   │   ├── retrieval/    # BM25 retrieval engine
+│   │   │   │   ├── rl/           # Feature extraction & prediction
+│   │   │   │   ├── calibration/  # Threshold calibration
 │   │   │   │   ├── optimizer/    # Battery optimization
 │   │   │   │   ├── telemetry/    # Performance tracing
 │   │   │   │   └── update/       # Rule update worker
 │   │   │   ├── data/
-│   │   │   │   ├── local/        # Room DB, preferences
+│   │   │   │   ├── local/        # Room DB (SQLCipher), preferences
 │   │   │   │   ├── remote/       # GitHub rules API
 │   │   │   │   └── repository/   # Data repositories
 │   │   │   ├── domain/           # UseCase layer
@@ -244,29 +256,19 @@ TianshangGuard/
 │   │   │   ├── ui/               # Compose UI (home, sms, stats, settings, alerts)
 │   │   │   └── di/               # Koin dependency injection
 │   │   └── assets/
-│   │       ├── model/            # ONNX model files (5 models)
-│   │       └── rules/            # Built-in blacklists/whitelists
+│   │       ├── model/            # ONNX model files
+│   │       └── knowledge_base/   # BM25 pre-computed index
 │   ├── zh/                       # Chinese flavor
-│   │   ├── res/values/strings.xml
-│   │   └── java/.../GuardApplication.kt  # Loads URL + Chinese + SMS
 │   ├── en/                       # English flavor
-│   │   ├── res/values/strings.xml
-│   │   └── java/.../GuardApplication.kt  # Loads URL + English
-│   ├── ja/                       # Japanese flavor
-│   │   ├── res/values/strings.xml
-│   │   └── java/.../GuardApplication.kt  # Loads URL + Japanese
-│   └── test/                     # Unit tests
+│   └── unified/                  # Unified flavor (auto-detect)
 ├── scripts/
-│   ├── train_phishing_model.py   # Main training script (1483 lines)
-│   ├── clean_chinese_data.py     # Data cleaning pipeline
-│   ├── _calibrate_thresholds.py  # Threshold calibration
-│   ├── validate_model.py         # Model validation
-│   ├── check_fitting.py          # Overfitting detection
+│   ├── train_phishing_model.py   # Main training script
+│   ├── backtranslate_augment.py  # Back-translation augmentation
+│   ├── build_bm25_index.py       # BM25 index builder
 │   └── raw_data/                 # Training datasets
-├── docs/
-│   ├── report.tex                # Technical report
-│   └── v1.1.0_report.tex        # v1.1.0 technical report
-└── .github/workflows/ci.yml     # CI configuration
+└── .github/workflows/
+    ├── ci.yml                    # CI: unit tests
+    └── build.yml                 # Build: APK artifacts
 ```
 
 ---
@@ -276,6 +278,9 @@ TianshangGuard/
 ### Core Commitments
 
 - **On-device analysis**: All inference runs locally via ONNX Runtime with NNAPI hardware acceleration
+- **Database encryption**: SQLCipher + Android Keystore for local data protection
+- **DNS privacy**: DNS over HTTPS (DoH) via Cloudflare, UDP fallback
+- **Rule integrity**: SHA-256 signature verification for rule updates
 - **Open-source auditable**: Code is fully public, community review welcome
 - **Local storage only**: All data stored locally in Room database, user can export or delete anytime
 - **Minimal permissions**: Only essential permissions requested, user controls each
