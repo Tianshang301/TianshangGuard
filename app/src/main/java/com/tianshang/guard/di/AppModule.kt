@@ -82,7 +82,7 @@ val appModule = module {
     single { KnowledgeBase(androidContext()) }
     single { FeedbackEngine(get(), get(), get()) }
     single { ThresholdCalibrator(androidContext(), get()) }
-    single { OnnxMlEngine() }
+    single { OnnxMlEngine(androidContext()) }
     single { RuleBasedEngine() }
     single<MlEngine> { MlEngineWithFallback(get(), get(), get(), get(), get(), get(), get()) }
 
