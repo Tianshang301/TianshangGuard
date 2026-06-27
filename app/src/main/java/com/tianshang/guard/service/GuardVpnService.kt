@@ -11,6 +11,7 @@ import com.tianshang.guard.R
 import com.tianshang.guard.core.dns.DnsEngine
 import com.tianshang.guard.core.dns.DnsPacketHandler
 import com.tianshang.guard.core.dns.DnsResult
+import com.tianshang.guard.core.dns.DohClient
 import com.tianshang.guard.core.util.SecureLog
 import com.tianshang.guard.ui.main.MainActivity
 import java.io.FileInputStream
@@ -37,6 +38,7 @@ class GuardVpnService : VpnService() {
     @Volatile private var isDestroying = false
 
     private val dnsEngine: DnsEngine by inject()
+    private val dohClient: DohClient by inject()
 
     private val packetHandler = DnsPacketHandler()
 
@@ -259,23 +261,23 @@ class GuardVpnService : VpnService() {
     private fun forwardToUpstreamDns(query: ByteBuffer): ByteBuffer? {
         return try {
             val dnsPayload = packetHandler.extractDnsPayload(query)
-            DatagramSocket().use { socket ->
-                socket.soTimeout = DNS_TIMEOUT_MS
-                val request = DatagramPacket(dnsPayload, dnsPayload.size, InetAddress.getByName(UPSTREAM_DNS), UPSTREAM_DNS_PORT)
-                socket.send(request)
-                val responseBuf = ByteArray(1500)
-                val responsePkt = DatagramPacket(responseBuf, responseBuf.size)
-                socket.receive(responsePkt)
-                val upstreamResponse = ByteBuffer.wrap(responsePkt.data, 0, responsePkt.length)
 
-                // VPN-02: Validate DNS response integrity
-                if (!packetHandler.validateDnsResponse(query, upstreamResponse)) {
-                    SecureLog.w("GuardVpnService", "DNS response validation failed, dropping")
-                    return null
-                }
-
-                packetHandler.buildResponseFromUpstream(query, upstreamResponse)
+            // Use DoH (DNS over HTTPS) with UDP fallback
+            val responseBytes = dohClient.resolve(dnsPayload)
+            if (responseBytes == null) {
+                SecureLog.w("GuardVpnService", "DNS resolution failed (both DoH and UDP)")
+                return null
             }
+
+            val upstreamResponse = ByteBuffer.wrap(responseBytes)
+
+            // Validate DNS response integrity
+            if (!packetHandler.validateDnsResponse(query, upstreamResponse)) {
+                SecureLog.w("GuardVpnService", "DNS response validation failed, dropping")
+                return null
+            }
+
+            packetHandler.buildResponseFromUpstream(query, upstreamResponse)
         } catch (e: Exception) {
             SecureLog.w("GuardVpnService", "Upstream DNS error", e)
             null
