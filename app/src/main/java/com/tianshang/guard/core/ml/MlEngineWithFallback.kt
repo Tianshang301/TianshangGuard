@@ -5,6 +5,7 @@ import com.tianshang.guard.core.retrieval.KnowledgeBase
 import com.tianshang.guard.core.rl.FeatureBasedPredictor
 import com.tianshang.guard.core.rl.FeatureExtractor
 import com.tianshang.guard.core.telemetry.PerformanceTracer
+import com.tianshang.guard.core.util.SecureLog
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -183,12 +184,12 @@ class MlEngineWithFallback(
 
     fun loadModelAsync(modelPath: String, type: ModelType = ModelType.URL) {
         try {
-            android.util.Log.i("MlEngine", "Loading model: $modelPath ($type)")
+            SecureLog.i("MlEngine", "Loading model: $modelPath ($type)")
             onnxEngine.loadModel(modelPath, type)
             states[type] = MlState.Ready
-            android.util.Log.i("MlEngine", "Model loaded successfully: $type")
+            SecureLog.i("MlEngine", "Model loaded successfully: $type")
         } catch (e: Exception) {
-            android.util.Log.e("MlEngine", "Model load FAILED: $type", e)
+            SecureLog.e("MlEngine", "Model load FAILED: $type", e)
             states[type] = MlState.Failed(e.message ?: "Load failed")
         }
     }
