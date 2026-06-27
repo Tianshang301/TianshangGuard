@@ -24,6 +24,7 @@ class GuardPreferences(private val context: Context) {
         private val KEY_SOUND_ALERT = booleanPreferencesKey("sound_alert")
         private val KEY_VIBRATE_ALERT = booleanPreferencesKey("vibrate_alert")
         private val KEY_SMS_MONITOR = booleanPreferencesKey("sms_monitor")
+        private val KEY_LANGUAGE = stringPreferencesKey("app_language")
     }
 
     val suspiciousCooldownSeconds: Int
@@ -55,6 +56,10 @@ class GuardPreferences(private val context: Context) {
 
     val smsMonitor: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_SMS_MONITOR] ?: false
+    }
+
+    val language: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LANGUAGE] ?: "system"
     }
 
     val rulesVersion: Flow<String> = context.dataStore.data.map { prefs ->
@@ -97,5 +102,9 @@ class GuardPreferences(private val context: Context) {
 
     suspend fun setSmsMonitor(enabled: Boolean) {
         context.dataStore.edit { prefs -> prefs[KEY_SMS_MONITOR] = enabled }
+    }
+
+    suspend fun setLanguage(language: String) {
+        context.dataStore.edit { prefs -> prefs[KEY_LANGUAGE] = language }
     }
 }

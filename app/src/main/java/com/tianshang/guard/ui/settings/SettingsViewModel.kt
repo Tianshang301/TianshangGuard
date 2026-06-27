@@ -35,6 +35,7 @@ class SettingsViewModel(
     val soundAlert: StateFlow<Boolean> = prefs.soundAlert.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val vibrateAlert: StateFlow<Boolean> = prefs.vibrateAlert.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val smsMonitor: StateFlow<Boolean> = prefs.smsMonitor.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val language: StateFlow<String> = prefs.language.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "system")
 
     fun setVpnAutoStart(enabled: Boolean) = viewModelScope.launch { prefs.setVpnAutoStart(enabled) }
     fun setBehaviorMonitor(enabled: Boolean) = viewModelScope.launch {
@@ -45,6 +46,7 @@ class SettingsViewModel(
     fun setSoundAlert(enabled: Boolean) = viewModelScope.launch { prefs.setSoundAlert(enabled) }
     fun setVibrateAlert(enabled: Boolean) = viewModelScope.launch { prefs.setVibrateAlert(enabled) }
     fun setSmsMonitor(enabled: Boolean) = viewModelScope.launch { prefs.setSmsMonitor(enabled) }
+    fun setLanguage(language: String) = viewModelScope.launch { prefs.setLanguage(language) }
 
     fun addToWhitelist(domain: String) = viewModelScope.launch {
         dnsEngine.addToWhitelist(domain)

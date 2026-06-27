@@ -60,12 +60,60 @@ fun SettingsScreen() {
     val soundAlert by viewModel.soundAlert.collectAsState(initial = true)
     val vibrateAlert by viewModel.vibrateAlert.collectAsState(initial = true)
     val smsMonitor by viewModel.smsMonitor.collectAsState(initial = false)
+    val language by viewModel.language.collectAsState(initial = "system")
     val batteryOptimized = remember { viewModel.isBatteryOptimizationIgnored(context) }
     val brandName = remember { viewModel.getPhoneBrand() }
 
     var showWhitelistDialog by remember { mutableStateOf(false) }
     var showBlacklistDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
     var listDomain by remember { mutableStateOf("") }
+
+    // Language dialog
+    if (showLanguageDialog) {
+        val languageOptions = listOf(
+            "system" to stringResource(R.string.settings_language_system),
+            "zh" to stringResource(R.string.settings_language_zh),
+            "en" to stringResource(R.string.settings_language_en)
+        )
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            title = { Text(stringResource(R.string.settings_language)) },
+            text = {
+                Column {
+                    languageOptions.forEach { (code, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setLanguage(code)
+                                    showLanguageDialog = false
+                                    (context as? android.app.Activity)?.recreate()
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            androidx.compose.material3.RadioButton(
+                                selected = language == code,
+                                onClick = {
+                                    viewModel.setLanguage(code)
+                                    showLanguageDialog = false
+                                    (context as? android.app.Activity)?.recreate()
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(label, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLanguageDialog = false }) {
+                    Text(stringResource(R.string.button_cancel))
+                }
+            }
+        )
+    }
 
     if (showWhitelistDialog) {
         AlertDialog(
@@ -130,6 +178,19 @@ fun SettingsScreen() {
     ) {
         Text(stringResource(R.string.settings_screen_title), style = MaterialTheme.typography.headlineLarge, color = OnSurfaceDark)
         Spacer(modifier = Modifier.height(20.dp))
+        // Language section - only show in unified flavor
+        val isUnified = context.packageName == "com.tianshang.guard"
+        if (isUnified) {
+            SettingsSection(stringResource(R.string.settings_section_general)) {
+                val currentLanguageLabel = when (language) {
+                    "zh" -> stringResource(R.string.settings_language_zh)
+                    "en" -> stringResource(R.string.settings_language_en)
+                    else -> stringResource(R.string.settings_language_system)
+                }
+                SettingsClickable(stringResource(R.string.settings_language), currentLanguageLabel, onClick = { showLanguageDialog = true })
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
         SettingsSection(stringResource(R.string.settings_section_protection)) {
             SettingsToggle(stringResource(R.string.settings_vpn_auto_start), stringResource(R.string.settings_vpn_auto_start_desc), checked = vpnAutoStart, onCheckedChange = { viewModel.setVpnAutoStart(it) })
             SettingsToggle(stringResource(R.string.settings_behavior_monitor), stringResource(R.string.settings_behavior_monitor_desc), checked = behaviorMonitor, onCheckedChange = { viewModel.setBehaviorMonitor(it) })
