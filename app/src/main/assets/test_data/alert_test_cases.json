@@ -1,0 +1,82 @@
+[
+  {
+    "type": "SMS_PHISHING",
+    "domain": "10086",
+    "url": null,
+    "risk_level": "DANGEROUS",
+    "user_action": null,
+    "timestamp": 1719500000000
+  },
+  {
+    "type": "SMS_PHISHING",
+    "domain": "95588",
+    "url": null,
+    "risk_level": "DANGEROUS",
+    "user_action": null,
+    "timestamp": 1719500100000
+  },
+  {
+    "type": "SUSPICIOUS_DOMAIN",
+    "domain": "my-bank-login.com",
+    "url": null,
+    "risk_level": "SUSPICIOUS",
+    "user_action": null,
+    "timestamp": 1719500200000
+  },
+  {
+    "type": "BLACKLIST_BLOCKED",
+    "domain": "phishing-example.com",
+    "url": null,
+    "risk_level": null,
+    "user_action": null,
+    "timestamp": 1719500300000
+  },
+  {
+    "type": "PHISHING_PAGE",
+    "domain": null,
+    "url": "http://phishing-site.com/login",
+    "risk_level": "DANGEROUS",
+    "user_action": null,
+    "timestamp": 1719500400000
+  },
+  {
+    "type": "SCREEN_SHARE",
+    "domain": null,
+    "url": null,
+    "risk_level": null,
+    "user_action": null,
+    "timestamp": 1719500500000
+  },
+  {
+    "type": "VISITED",
+    "domain": "baidu.com",
+    "url": null,
+    "risk_level": null,
+    "user_action": null,
+    "timestamp": 1719500600000
+  },
+  {
+    "type": "VISITED",
+    "domain": "google.com",
+    "url": null,
+    "risk_level": null,
+    "user_action": null,
+    "timestamp": 1719500700000
+  },
+  {
+    "type": "SMS_PHISHING",
+    "domain": "Unknown",
+    "url": null,
+    "risk_level": "DANGEROUS",
+    "user_action": "CONFIRMED",
+    "timestamp": 1719500800000
+  },
+  {
+    "type": "SMS_PHISHING",
+    "domain": "10086",
+    "url": null,
+    "risk_level": "SUSPICIOUS",
+    "user_action": "FALSE_POSITIVE",
+    "timestamp": 1719500900000
+  }
+]
