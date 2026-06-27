@@ -12,6 +12,14 @@ enum class RiskLevel(val threshold: Float) {
     SUSPICIOUS(0.50f),
     DANGEROUS(1.0f);
 
+    // BUGFIX: Convert discrete risk level to continuous score (midpoint of range)
+    // Using .threshold directly causes boundary value escalation (e.g., SUSPICIOUS→0.50→DANGEROUS)
+    fun toScore(): Float = when (this) {
+        SAFE -> 0.05f
+        SUSPICIOUS -> 0.30f
+        DANGEROUS -> 0.75f
+    }
+
     companion object {
         fun fromScore(score: Float): RiskLevel = when {
             score < SAFE.threshold -> SAFE

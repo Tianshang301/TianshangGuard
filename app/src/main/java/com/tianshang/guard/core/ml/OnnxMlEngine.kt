@@ -9,12 +9,13 @@ class BertTokenizer {
 
     fun encode(text: String, maxLength: Int): LongArray {
         val tokens = LongArray(maxLength) { 0L }
-        tokens[0] = 101L
-        val textBytes = text.take(maxLength - 2).encodeToByteArray()
+        tokens[0] = 101L // [CLS]
+        // BUGFIX: truncate by bytes, not characters (prevents ArrayIndexOutOfBounds for CJK)
+        val textBytes = text.encodeToByteArray().take(maxLength - 2)
         for (i in textBytes.indices) {
             tokens[i + 1] = textBytes[i].toLong() and 0xFF
         }
-        tokens[minOf(textBytes.size + 1, maxLength - 1)] = 102L
+        tokens[minOf(textBytes.size + 1, maxLength - 1)] = 102L // [SEP]
         return tokens
     }
 }
@@ -28,7 +29,8 @@ class OnnxMlEngine : MlEngine {
     override fun loadModel(modelPath: String, type: ModelType) {
         val env = OrtEnvironment.getEnvironment()
         val sessionOptions = OrtSession.SessionOptions().apply {
-            addNnapi()
+            // BUGFIX: NNAPI may not be available on all devices; fall back to CPU
+            try { addNnapi() } catch (_: Exception) {}
             setIntraOpNumThreads(2)
         }
         sessions[type] = env.createSession(modelPath, sessionOptions)
@@ -37,27 +39,23 @@ class OnnxMlEngine : MlEngine {
     fun analyzeWithModel(text: String, type: ModelType): RiskLevel {
         val session = sessions[type] ?: return RiskLevel.SAFE
         val inputIds = tokenizer.encode(text, maxLength = 512)
-        val inputTensor = OnnxTensor.createTensor(
-            OrtEnvironment.getEnvironment(),
-            arrayOf(inputIds)
-        )
-
-        val outputs = session.run(mapOf("input" to inputTensor))
-        val score = (outputs?.get(0)?.value as? FloatArray)?.firstOrNull() ?: 0f
-
-        return RiskLevel.fromScore(score)
+        // BUGFIX: use .use {} to release native memory (OnnxTensor + Result are AutoCloseable)
+        OnnxTensor.createTensor(OrtEnvironment.getEnvironment(), arrayOf(inputIds)).use { inputTensor ->
+            session.run(mapOf("input" to inputTensor)).use { outputs ->
+                val score = (outputs?.get(0)?.value as? FloatArray)?.firstOrNull() ?: 0f
+                return RiskLevel.fromScore(score)
+            }
+        }
     }
 
     fun analyzeWithModelScore(text: String, type: ModelType): Float {
         val session = sessions[type] ?: return 0f
         val inputIds = tokenizer.encode(text, maxLength = 512)
-        val inputTensor = OnnxTensor.createTensor(
-            OrtEnvironment.getEnvironment(),
-            arrayOf(inputIds)
-        )
-
-        val outputs = session.run(mapOf("input" to inputTensor))
-        return (outputs?.get(0)?.value as? FloatArray)?.firstOrNull() ?: 0f
+        OnnxTensor.createTensor(OrtEnvironment.getEnvironment(), arrayOf(inputIds)).use { inputTensor ->
+            session.run(mapOf("input" to inputTensor)).use { outputs ->
+                return (outputs?.get(0)?.value as? FloatArray)?.firstOrNull() ?: 0f
+            }
+        }
     }
 
     override fun analyzeWebPage(text: String): RiskLevel {
@@ -114,6 +112,8 @@ class OnnxMlEngine : MlEngine {
     }
 
     private fun calculateEntropy(s: String): Float {
+        // BUGFIX: guard against empty string (0 length → NaN)
+        if (s.isEmpty()) return 0f
         val freq = s.groupingBy { it }.eachCount()
         val len = s.length.toFloat()
         return -freq.values.sumOf { count ->
@@ -127,8 +127,11 @@ class OnnxMlEngine : MlEngine {
     }
 
     private fun ruleBasedDomainAnalysis(features: FloatArray): RiskLevel {
+        val length = features[0]
+        // BUGFIX: guard against empty domain (division by zero)
+        if (length == 0f) return RiskLevel.SAFE
         val entropy = features[1]
-        val digitRatio = features[2] / features[0]
+        val digitRatio = features[2] / length
         return when {
             entropy > 3.5f && digitRatio > 0.3f -> RiskLevel.SUSPICIOUS
             else -> RiskLevel.SAFE

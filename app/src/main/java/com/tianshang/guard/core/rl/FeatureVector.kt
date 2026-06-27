@@ -26,14 +26,15 @@ data class FeatureVector(
 
     fun toFloatArray(): FloatArray {
         return floatArrayOf(
-            textLength.toFloat() / 500f,  // Normalize to [0,1]
-            urlCount.toFloat() / 5f,
+            (textLength.toFloat() / 500f).coerceAtMost(1f),  // BUGFIX: Clamp to [0,1]
+            (urlCount.toFloat() / 5f).coerceAtMost(1f),
             if (hasPhoneNumber) 1f else 0f,
             if (hasFinancialKeywords) 1f else 0f,
             if (hasUrgencyKeywords) 1f else 0f,
             if (hasThreatKeywords) 1f else 0f,
             senderType.ordinal.toFloat() / 3f,
-            language.ordinal.toFloat()
+            // BUGFIX: Normalize language to [0,1] based on enum size
+            language.ordinal.toFloat() / (Language.entries.size - 1).coerceAtLeast(1).toFloat()
         )
     }
 

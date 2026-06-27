@@ -45,7 +45,8 @@ class FeatureExtractor {
     }
 
     private fun containsPhoneNumber(text: String): Boolean {
-        val phonePattern = Regex("1[3-9]\\d{9}")
+        // BUGFIX: Add word boundary to avoid matching URLs/timestamps
+        val phonePattern = Regex("(?<!\\d)1[3-9]\\d{9}(?!\\d)")
         return phonePattern.containsMatchIn(text)
     }
 

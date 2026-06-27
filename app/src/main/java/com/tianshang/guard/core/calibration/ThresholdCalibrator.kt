@@ -47,7 +47,8 @@ class ThresholdCalibrator(
     }
 
     fun getDangerousThreshold(): Float {
-        return (defaultDangerous + prefs.getFloat(KEY_DANGEROUS_BIAS, 0f)).coerceIn(defaultDangerous, defaultDangerous + maxDangerousBias)
+        // BUGFIX: Allow threshold to go below default (for anti-fraud: FNR > FPR priority)
+        return (defaultDangerous + prefs.getFloat(KEY_DANGEROUS_BIAS, 0f)).coerceIn(0.30f, defaultDangerous + maxDangerousBias)
     }
 
     fun recordFeedback(modelScore: Float, label: FeedbackLabel) {
