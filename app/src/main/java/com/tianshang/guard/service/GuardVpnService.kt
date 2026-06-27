@@ -41,6 +41,8 @@ class GuardVpnService : VpnService() {
     private val dohClient: DohClient by inject()
 
     private val packetHandler = DnsPacketHandler()
+    // L-9: Secure random for DNS transaction IDs
+    private val secureRandom = java.security.SecureRandom()
 
     // VPN-03: DNS cache with TTL and size limit
     private data class CacheEntry(val result: DnsResult, val timestamp: Long)
@@ -242,7 +244,8 @@ class GuardVpnService : VpnService() {
     private fun sendKeepaliveQuery() {
         if (!running) return
         try {
-            val id = (System.currentTimeMillis() and 0xFFFF).toShort()
+            // L-9: Use SecureRandom for unpredictable transaction ID
+            val id = secureRandom.nextInt(0xFFFF).toShort()
             val query = ByteBuffer.allocate(512)
             query.putShort(id)
             query.putShort(0x0100) // Standard query, recursion desired
@@ -308,8 +311,15 @@ class GuardVpnService : VpnService() {
         }
         SecureLog.i("GuardVpnService", "Restarting VPN...")
 
-        running = false // BUGFIX: Stop handler thread before teardown
-        teardownInternal()
+        running = false
+        // C-7: Only teardown resources, do NOT set isDestroying
+        keepaliveJob?.cancel()
+        keepaliveJob = null
+        watchdogJob?.cancel()
+        watchdogJob = null
+        dnsEngine.stop()
+        try { vpnInterface?.close() } catch (_: Exception) {}
+        vpnInterface = null
 
         // C-5: Store restart runnable so it can be cancelled
         restartRunnable = Runnable {
@@ -386,9 +396,19 @@ class GuardVpnService : VpnService() {
     override fun onDestroy() {
         super.onDestroy()
         serviceScope.cancel()
-        if (!isDestroying) {
-            isDestroying = true
-            stopVpn()
+        isDestroying = true
+        running = false
+        // M-21: Always perform cleanup, cancel restart runnable
+        restartRunnable?.let {
+            android.os.Handler(android.os.Looper.getMainLooper()).removeCallbacks(it)
         }
+        restartRunnable = null
+        keepaliveJob?.cancel()
+        watchdogJob?.cancel()
+        dnsEngine.stop()
+        try { vpnInterface?.close() } catch (_: Exception) {}
+        vpnInterface = null
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 }

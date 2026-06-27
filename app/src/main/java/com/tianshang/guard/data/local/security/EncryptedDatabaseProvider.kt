@@ -65,15 +65,17 @@ class EncryptedDatabaseProvider(private val context: Context) {
      * Migrate unencrypted database to encrypted database.
      */
     private fun migrateToEncrypted(dbFile: File, passphrase: ByteArray) {
+        var unencrypted: android.database.sqlite.SQLiteDatabase? = null
+        var encrypted: net.sqlcipher.database.SQLiteDatabase? = null
+        val tempFile = File(dbFile.parent, "${DB_NAME}.encrypted")
         try {
             // 1. Open unencrypted database
-            val unencrypted = android.database.sqlite.SQLiteDatabase.openDatabase(
+            unencrypted = android.database.sqlite.SQLiteDatabase.openDatabase(
                 dbFile.absolutePath, null, android.database.sqlite.SQLiteDatabase.OPEN_READONLY
             )
 
             // 2. Create temporary encrypted database
-            val tempFile = File(dbFile.parent, "${DB_NAME}.encrypted")
-            val encrypted = net.sqlcipher.database.SQLiteDatabase.openDatabase(
+            encrypted = net.sqlcipher.database.SQLiteDatabase.openDatabase(
                 tempFile.absolutePath,
                 passphrase.toString(Charsets.UTF_8),
                 null,
@@ -88,11 +90,7 @@ class EncryptedDatabaseProvider(private val context: Context) {
             unencrypted.execSQL("SELECT sqlcipher_export('encrypted')")
             unencrypted.execSQL("DETACH DATABASE encrypted")
 
-            // 4. Close databases
-            encrypted.close()
-            unencrypted.close()
-
-            // 5. Replace old database with encrypted one
+            // 4. Replace old database with encrypted one
             dbFile.delete()
             tempFile.renameTo(dbFile)
 
@@ -101,6 +99,11 @@ class EncryptedDatabaseProvider(private val context: Context) {
             SecureLog.e("EncryptedDatabaseProvider", "Migration failed, will recreate database", e)
             // If migration fails, delete old database and let Room recreate it
             dbFile.delete()
+            tempFile.delete()
+        } finally {
+            // M-22: Always close database connections in finally block
+            try { encrypted?.close() } catch (_: Exception) {}
+            try { unencrypted?.close() } catch (_: Exception) {}
         }
     }
 

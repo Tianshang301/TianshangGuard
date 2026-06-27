@@ -14,13 +14,14 @@ class KnowledgeBase(private val context: Context) {
     fun loadAsync() {
         ioScope.launch {
             try {
-                val inputStream = context.assets.open("knowledge_base/index.bin")
-                val success = bm25Engine.loadFromAssets(inputStream)
-                inputStream.close()
-                if (success) {
-                    SecureLog.i("KnowledgeBase", "Loaded BM25 index: ${bm25Engine.getDocCount()} documents")
-                } else {
-                    SecureLog.e("KnowledgeBase", "Failed to load BM25 index")
+                // L-6: Use .use{} to ensure InputStream is closed on exception
+                context.assets.open("knowledge_base/index.bin").use { inputStream ->
+                    val success = bm25Engine.loadFromAssets(inputStream)
+                    if (success) {
+                        SecureLog.i("KnowledgeBase", "Loaded BM25 index: ${bm25Engine.getDocCount()} documents")
+                    } else {
+                        SecureLog.e("KnowledgeBase", "Failed to load BM25 index")
+                    }
                 }
             } catch (e: Exception) {
                 SecureLog.e("KnowledgeBase", "Failed to open index file", e)

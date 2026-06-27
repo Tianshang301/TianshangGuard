@@ -84,8 +84,12 @@ class MlEngineWithFallback(
         }
 
         // 1. Model inference → continuous score
+        // H-16: Synchronize on states map during iteration
+        val hasReadyModel = synchronized(states) {
+            states.any { it.value is MlState.Ready }
+        }
         val modelScore = when {
-            states.any { it.value is MlState.Ready } -> runSmsWithScore(text)
+            hasReadyModel -> runSmsWithScore(text)
             // BUGFIX: Use .toScore() instead of .threshold to avoid boundary escalation
             else -> fallbackEngine.analyzeSms(text).toScore()
         }

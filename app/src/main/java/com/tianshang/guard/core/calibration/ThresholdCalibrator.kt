@@ -15,6 +15,8 @@ class ThresholdCalibrator(
 
     private val prefs: SharedPreferences = context.getSharedPreferences("threshold_calibration", Context.MODE_PRIVATE)
     private val ioScope = CoroutineScope(Dispatchers.IO)
+    // M-20: Lock for atomic read-modify-write operations
+    private val calibrationLock = Any()
 
     private val momentum = 0.9f
     private val learningRate = 0.1f
@@ -54,32 +56,35 @@ class ThresholdCalibrator(
 
     fun recordFeedback(modelScore: Float, label: FeedbackLabel) {
         ioScope.launch {
-            val count = prefs.getInt(KEY_FEEDBACK_COUNT, 0) + 1
-            prefs.edit().putInt(KEY_FEEDBACK_COUNT, count).apply()
+            // M-20: Synchronized to prevent race condition on read-modify-write
+            synchronized(calibrationLock) {
+                val count = prefs.getInt(KEY_FEEDBACK_COUNT, 0) + 1
+                prefs.edit().putInt(KEY_FEEDBACK_COUNT, count).apply()
 
-            // Apply decay every N feedbacks
-            if (count % decayInterval == 0) {
-                applyDecay()
-            }
-
-            val currentDangerousBias = prefs.getFloat(KEY_DANGEROUS_BIAS, 0f)
-            val currentSuspiciousBias = prefs.getFloat(KEY_SUSPICIOUS_BIAS, 0f)
-
-            when (label) {
-                FeedbackLabel.PHISHING -> {
-                    if (modelScore < defaultDangerous) {
-                        val delta = (modelScore - defaultDangerous) * learningRate
-                        val newBias = (momentum * currentDangerousBias + (1 - momentum) * delta)
-                            .coerceIn(-maxDangerousBias, maxDangerousBias)
-                        prefs.edit().putFloat(KEY_DANGEROUS_BIAS, newBias).apply()
-                    }
+                // Apply decay every N feedbacks
+                if (count % decayInterval == 0) {
+                    applyDecay()
                 }
-                FeedbackLabel.FALSE_POSITIVE -> {
-                    if (modelScore > defaultSuspicious) {
-                        val delta = (modelScore - defaultSuspicious) * learningRate
-                        val newBias = (momentum * currentSuspiciousBias + (1 - momentum) * delta)
-                            .coerceIn(0f, maxSuspiciousBias)
-                        prefs.edit().putFloat(KEY_SUSPICIOUS_BIAS, newBias).apply()
+
+                val currentDangerousBias = prefs.getFloat(KEY_DANGEROUS_BIAS, 0f)
+                val currentSuspiciousBias = prefs.getFloat(KEY_SUSPICIOUS_BIAS, 0f)
+
+                when (label) {
+                    FeedbackLabel.PHISHING -> {
+                        if (modelScore < defaultDangerous) {
+                            val delta = (modelScore - defaultDangerous) * learningRate
+                            val newBias = (momentum * currentDangerousBias + (1 - momentum) * delta)
+                                .coerceIn(-maxDangerousBias, maxDangerousBias)
+                            prefs.edit().putFloat(KEY_DANGEROUS_BIAS, newBias).apply()
+                        }
+                    }
+                    FeedbackLabel.FALSE_POSITIVE -> {
+                        if (modelScore > defaultSuspicious) {
+                            val delta = (modelScore - defaultSuspicious) * learningRate
+                            val newBias = (momentum * currentSuspiciousBias + (1 - momentum) * delta)
+                                .coerceIn(0f, maxSuspiciousBias)
+                            prefs.edit().putFloat(KEY_SUSPICIOUS_BIAS, newBias).apply()
+                        }
                     }
                 }
             }

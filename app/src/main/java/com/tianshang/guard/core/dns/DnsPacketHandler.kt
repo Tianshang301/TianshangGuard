@@ -47,6 +47,8 @@ class DnsPacketHandler {
                 val offset = ((len and 0x3F) shl 8) or (buffer.get(pos + 1).toInt() and 0xFF)
                 return sb.toString() + resolveCompressedName(buffer, dnsOffset, offset)
             }
+            // L-8: Validate total domain length per RFC 1035
+            if (sb.length + len + 1 > MAX_DOMAIN_LENGTH) return ""
             pos++
             if (sb.isNotEmpty()) sb.append('.')
             for (i in 0 until len) {
@@ -86,6 +88,7 @@ class DnsPacketHandler {
 
     companion object {
         private const val MAX_COMPRESSION_DEPTH = 10
+        private const val MAX_DOMAIN_LENGTH = 253 // RFC 1035
     }
 
     fun extractDnsPayload(buffer: ByteBuffer): ByteArray {
