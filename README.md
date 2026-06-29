@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)](LICENSE)
 [![Android](https://img.shields.io/badge/Android-8.0%2B-green.svg)](https://developer.android.com/about/versions/oreo)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9-purple.svg)](https://kotlinlang.org)
-![Version](https://img.shields.io/badge/version-1.4.1-blue.svg)
+![Version](https://img.shields.io/badge/version-1.4.2-blue.svg)
 
 Open-source Android anti-fraud tool with a layered defense architecture. **All analysis runs on-device — zero data upload.**
 
@@ -201,9 +201,9 @@ adb install app/build/outputs/apk/zh/release/app-zh-release.apk
 
 | Version | Language | Models Included | Status |
 |---------|----------|-----------------|--------|
-| [v1.4.1-chinese](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.4.1-chinese) | Chinese UI | URL + Chinese + SMS | ✅ Released |
-| [v1.4.1-english](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.4.1-english) | English UI | URL + English | ✅ Released |
-| [v1.4.1-unified](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.4.1-unified) | Auto-detect (language switch in Settings) | URL + Chinese + SMS + English | ✅ Released |
+| [v1.4.2-chinese](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.4.2-chinese) | Chinese UI | URL + Chinese + SMS | ✅ Released |
+| [v1.4.2-english](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.4.2-english) | English UI | URL + English | ✅ Released |
+| [v1.4.2-unified](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.4.2-unified) | Auto-detect (language switch in Settings) | URL + Chinese + SMS + English | ✅ Released |
 
 ---
 

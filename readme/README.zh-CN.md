@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)](LICENSE)
 [![Android](https://img.shields.io/badge/Android-8.0%2B-green.svg)](https://developer.android.com/about/versions/oreo)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9-purple.svg)](https://kotlinlang.org)
-![Version](https://img.shields.io/badge/version-1.4.1-blue.svg)
+![Version](https://img.shields.io/badge/version-1.4.2-blue.svg)
 
 开源 Android 反诈工具，采用分层防御架构，**所有分析在设备本地完成，零数据上传**。
 
@@ -201,9 +201,9 @@ adb install app/build/outputs/apk/zh/release/app-zh-release.apk
 
 | 版本 | 语言 | 包含模型 | 状态 |
 |------|------|----------|------|
-| [v1.4.1-中文版](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.4.1-chinese) | 中文 UI | URL + 中文 + SMS | ✅ 已发布 |
-| [v1.4.1-英文版](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.4.1-english) | 英文 UI | URL + 英文 | ✅ 已发布 |
-| [v1.4.1-统一版](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.4.1-unified) | 自动检测（设置中可切换语言） | URL + 中文 + SMS + 英文 | ✅ 已发布 |
+| [v1.4.2-中文版](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.4.2-chinese) | 中文 UI | URL + 中文 + SMS | ✅ 已发布 |
+| [v1.4.2-英文版](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.4.2-english) | 英文 UI | URL + 英文 | ✅ 已发布 |
+| [v1.4.2-统一版](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.4.2-unified) | 自动检测（设置中可切换语言） | URL + 中文 + SMS + 英文 | ✅ 已发布 |
 
 ---
 
