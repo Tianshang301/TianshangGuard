@@ -82,24 +82,23 @@ fun SettingsScreen() {
             text = {
                 Column {
                     languageOptions.forEach { (code, label) ->
+                        val activity = context as? android.app.Activity
+                        val onSelect = {
+                            viewModel.setLanguage(code) {
+                                activity?.recreate()
+                            }
+                            showLanguageDialog = false
+                        }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    viewModel.setLanguage(code)
-                                    showLanguageDialog = false
-                                    (context as? android.app.Activity)?.recreate()
-                                }
+                                .clickable(onClick = onSelect)
                                 .padding(vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             androidx.compose.material3.RadioButton(
                                 selected = language == code,
-                                onClick = {
-                                    viewModel.setLanguage(code)
-                                    showLanguageDialog = false
-                                    (context as? android.app.Activity)?.recreate()
-                                }
+                                onClick = onSelect
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(label, style = MaterialTheme.typography.bodyLarge)
