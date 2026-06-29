@@ -46,7 +46,12 @@ class SettingsViewModel(
     fun setSoundAlert(enabled: Boolean) = viewModelScope.launch { prefs.setSoundAlert(enabled) }
     fun setVibrateAlert(enabled: Boolean) = viewModelScope.launch { prefs.setVibrateAlert(enabled) }
     fun setSmsMonitor(enabled: Boolean) = viewModelScope.launch { prefs.setSmsMonitor(enabled) }
-    fun setLanguage(language: String) = viewModelScope.launch { prefs.setLanguage(language) }
+    fun setLanguage(language: String, onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            prefs.setLanguage(language)
+            onComplete()
+        }
+    }
 
     fun addToWhitelist(domain: String) = viewModelScope.launch {
         dnsEngine.addToWhitelist(domain)
