@@ -24,6 +24,8 @@ class EncryptedDatabaseProvider(private val context: Context) {
     }
 
     fun createDatabase(): GuardDatabase {
+        // Load SQLCipher native library before any direct SQLCipher API usage
+        net.sqlcipher.database.SQLiteDatabase.loadLibs(context)
         val passphrase = getOrCreatePassphrase()
         val passphraseBytes = passphrase.toByteArray(Charsets.UTF_8)
         val factory = SupportFactory(passphraseBytes)
