@@ -1,5 +1,7 @@
 package com.tianshang.guard.core.ml
 
+import android.content.Context
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -10,7 +12,7 @@ class RuleBasedEngineTest {
 
     @Before
     fun setUp() {
-        engine = RuleBasedEngine()
+        engine = RuleBasedEngine(mockk<Context>(relaxed = true))
     }
 
     @Test
