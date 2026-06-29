@@ -24,11 +24,16 @@ class RuleBasedEngine(private val context: Context) : MlEngine {
             phishingKeywords = loadKeywordList("rules/keywords_web.json")
             smsPhishingKeywords = loadKeywordList("rules/keywords_sms.json")
             smsPhishingKeywordsJapanese = loadKeywordList("rules/keywords_sms_ja.json")
+            if (phishingKeywords.isEmpty() && smsPhishingKeywords.isEmpty()) {
+                SecureLog.w("RuleBasedEngine", "All keyword lists empty, falling back to defaults")
+                loadDefaults()
+            }
             loaded = true
             SecureLog.i("RuleBasedEngine", "Keywords loaded: web=${phishingKeywords.size}, sms=${smsPhishingKeywords.size}, ja=${smsPhishingKeywordsJapanese.size}")
         } catch (e: Exception) {
             SecureLog.e("RuleBasedEngine", "Failed to load keywords, using defaults", e)
             loadDefaults()
+            loaded = true
         }
     }
 
