@@ -93,7 +93,7 @@ jobs:
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: |
-          echo "$KEYSTORE_B64" | base64 -d > keystore.jks 2>/dev/null || true
+          echo "$KEYSTORE_B64" | base64 -d > release.jks 2>/dev/null || true
       - name: Build all flavors
         run: ./gradlew assembleZhRelease assembleEnRelease assembleUnifiedRelease --no-daemon
       - uses: actions/upload-artifact@v4
