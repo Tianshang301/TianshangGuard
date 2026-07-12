@@ -1,0 +1,63 @@
+[
+  {
+    "name": "empty_string",
+    "text": "",
+    "expected_tokens": [101, 102],
+    "expected_length": 2,
+    "max_length": 512
+  },
+  {
+    "name": "single_chinese_char",
+    "text": "你",
+    "expected_tokens_length": 3,
+    "max_length": 512
+  },
+  {
+    "name": "english_hello",
+    "text": "hello world",
+    "expected_tokens_length": 4,
+    "max_length": 512
+  },
+  {
+    "name": "url_phishing",
+    "text": "https://phishing.com/verify",
+    "expected_tokens_length": 6,
+    "max_length": 512
+  },
+  {
+    "name": "max_length_truncation",
+    "text": "a".repeat(600),
+    "expected_tokens_length": 512,
+    "max_length": 512
+  },
+  {
+    "name": "mixed_chinese_english",
+    "text": "验证码 123456 is valid",
+    "expected_tokens_length": 9,
+    "max_length": 512
+  },
+  {
+    "name": "sms_with_brackets",
+    "text": "【工商银行】您的账户异常",
+    "expected_tokens_length": 12,
+    "max_length": 512
+  },
+  {
+    "name": "punctuation_only",
+    "text": "!!!???!!!",
+    "expected_tokens_length": 10,
+    "max_length": 512
+  },
+  {
+    "name": "special_chars",
+    "text": "test@example.com #1",
+    "expected_tokens_length": 7,
+    "max_length": 512
+  },
+  {
+    "name": "numeric_only",
+    "text": "1234567890",
+    "expected_tokens_length": 12,
+    "max_length": 512
+  }
+]

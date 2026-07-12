@@ -12,12 +12,10 @@ import com.tianshang.guard.core.feedback.FeedbackEngine
 import com.tianshang.guard.data.local.GuardPreferences
 import com.tianshang.guard.data.repository.AlertRepository
 import com.tianshang.guard.data.repository.RuleRepository
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 
 class SettingsViewModel(
@@ -104,8 +102,7 @@ class SettingsViewModel(
     }
 
     fun checkRuleUpdates() = viewModelScope.launch {
-        // BUGFIX: Run DNS engine start on IO dispatcher to avoid blocking main thread
-        withContext(Dispatchers.IO) { dnsEngine.start() }
+        dnsEngine.start()
     }
 
     fun openBatterySettings(context: Context) {

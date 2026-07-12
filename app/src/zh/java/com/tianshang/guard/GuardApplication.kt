@@ -4,8 +4,6 @@ import android.app.Application
 import com.tianshang.guard.core.ml.MlEngine
 import com.tianshang.guard.core.ml.ModelType
 import com.tianshang.guard.core.retrieval.KnowledgeBase
-import com.tianshang.guard.data.local.database.DomainCategory
-import com.tianshang.guard.data.local.database.DomainEntity
 import com.tianshang.guard.data.repository.RuleRepository
 import com.tianshang.guard.di.appModule
 import org.json.JSONArray
@@ -42,14 +40,6 @@ class GuardApplication : Application() {
             }
             mlEngine.loadModel(urlModelFile.absolutePath, ModelType.URL)
 
-            val chineseModelFile = File(cacheDir, "chinese_phishing.onnx")
-            if (!chineseModelFile.exists()) {
-                assets.open("model/chinese_phishing.onnx").use { input ->
-                    chineseModelFile.outputStream().use { output -> input.copyTo(output) }
-                }
-            }
-            mlEngine.loadModel(chineseModelFile.absolutePath, ModelType.CHINESE)
-
             val smsModelFile = File(cacheDir, "sms_phishing.onnx")
             if (!smsModelFile.exists()) {
                 assets.open("model/sms_phishing.onnx").use { input ->
@@ -58,7 +48,7 @@ class GuardApplication : Application() {
             }
             mlEngine.loadModel(smsModelFile.absolutePath, ModelType.SMS)
 
-            android.util.Log.i("GuardApp", "Chinese version: loaded URL, CHINESE, SMS models")
+            android.util.Log.i("GuardApp", "Chinese version: loaded URL, SMS models")
 
             // Load BM25 knowledge base
             val knowledgeBase: KnowledgeBase = get(KnowledgeBase::class.java)

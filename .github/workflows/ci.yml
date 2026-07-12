@@ -2,30 +2,101 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
+  unit-test:
+    name: Unit Tests (${{ matrix.flavor }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: [zh, en, unified]
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
-          java-version: 17
           distribution: temurin
+          java-version: 17
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Increase Gradle heap
-        run: echo "org.gradle.jvmargs=-Xmx4g" >> gradle.properties
-
-      - name: Setup Gradle
+      - name: Setup Gradle cache
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Run unit tests
-        run: ./gradlew testZhDebugUnitTest --no-daemon
+      - name: Run unit tests with coverage
+        run: ./gradlew test${{ matrix.flavor }}DebugUnitTest --no-daemon
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.flavor }}
+          path: app/build/reports/tests/test${{ matrix.flavor }}DebugUnitTest/
+
+  coverage:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v3
+      - name: Run unified tests
+        run: ./gradlew testUnifiedDebugUnitTest jacocoTestReport --no-daemon
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: app/build/reports/jacoco/jacocoTestReport/
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v3
+      - run: ./gradlew lintZhDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lint-results
+          path: app/build/reports/lint-results*
+
+  build:
+    name: Build Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref_name == 'main'
+    needs: [unit-test, lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v3
+      - name: Decode keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > keystore.jks 2>/dev/null || true
+      - name: Build all flavors
+        run: ./gradlew assembleZhRelease assembleEnRelease assembleUnifiedRelease --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-apks
+          path: app/build/outputs/apk/*/release/*.apk

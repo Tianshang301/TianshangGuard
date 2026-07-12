@@ -15,7 +15,7 @@ class BootReceiver : BroadcastReceiver() {
             // H-17: Use DataStore with timeout instead of SharedPreferences
             val bootStart = runBlocking {
                 withTimeoutOrNull(2000L) {
-                    GuardPreferences(context).bootStart.first()
+                    GuardPreferences.create(context).bootStart.first()
                 }
             } ?: true // Default to true if timeout
             if (bootStart) {

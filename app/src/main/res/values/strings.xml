@@ -5,4 +5,8 @@
     <string name="vpn_channel_description">持续保护您免受网络诈骗</string>
     <string name="vpn_notification_title">天殇·破妄运行中</string>
     <string name="vpn_notification_text">正在拦截已知钓鱼域名…</string>
+    <string name="qr_tile_label">扫码检测</string>
+    <string name="qr_scan_title">QR 码检测</string>
+    <string name="nav_qr">扫码</string>
+    <string name="action_scan_qr">扫码检测</string>
 </resources>

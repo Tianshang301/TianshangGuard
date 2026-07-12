@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- QR code squares -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M3,3h6v6H3zM4,4h4v4H4z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M15,3h6v6h-6zM16,4h4v4h-4z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M3,15h6v6H3zM4,16h4v4H4z" />
+
+    <!-- QR code inner patterns -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M7,7h1v1H7z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M19,7h1v1h-1z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M7,19h1v1H7z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M13,11h2v2h-2z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M17,13h1v1h-1z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M11,17h4v1h-4z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M13,15h2v2h-2z" />
+</vector>

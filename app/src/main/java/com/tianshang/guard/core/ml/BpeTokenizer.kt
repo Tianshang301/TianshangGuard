@@ -14,7 +14,7 @@ import java.io.InputStreamReader
  * 
  * The vocabulary file should be a JSON file mapping tokens to IDs.
  */
-class BpeTokenizer(private val context: Context) {
+class BpeTokenizer(private val context: Context? = null) {
 
     private var vocab: Map<String, Int> = emptyMap()
     private var invVocab: Map<Int, String> = emptyMap()
@@ -28,14 +28,23 @@ class BpeTokenizer(private val context: Context) {
         private const val CLS_ID = 2
         private const val SEP_ID = 3
         private const val MAX_LENGTH = 512
+
+        fun fromVocabMap(vocab: Map<String, Int>): BpeTokenizer {
+            val tokenizer = BpeTokenizer(context = null)
+            tokenizer.vocab = vocab
+            tokenizer.invVocab = vocab.entries.associate { (k, v) -> v to k }
+            tokenizer.isLoaded = true
+            return tokenizer
+        }
     }
 
     /**
      * Load the BPE vocabulary from assets.
      */
     fun load(): Boolean {
+        val ctx = context ?: return false
         return try {
-            val vocabJson = context.assets.open(VOCAB_FILE).bufferedReader().use { it.readText() }
+            val vocabJson = ctx.assets.open(VOCAB_FILE).bufferedReader().use { it.readText() }
             val jsonObject = JSONObject(vocabJson)
             val vocabMap = mutableMapOf<String, Int>()
             val invVocabMap = mutableMapOf<Int, String>()

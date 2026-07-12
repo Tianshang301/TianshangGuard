@@ -1,0 +1,45 @@
+{
+  "version": "TBD",
+  "description": "Baseline inference scores for regression testing. Populate after model training.",
+  "model_checksums": {
+    "url_phishing.onnx": "TBD",
+    "chinese_phishing.onnx": "TBD",
+    "english_phishing.onnx": "TBD",
+    "sms_phishing.onnx": "TBD",
+    "phishing_detector_quant.onnx": "TBD"
+  },
+  "models": {
+    "url_phishing": {
+      "type": "URL",
+      "language": null,
+      "test_cases": [
+        {"input": "https://phishing.com/verify", "expected_score": -1.0, "tolerance": 0.0, "expected_label": null},
+        {"input": "https://google.com/search", "expected_score": -1.0, "tolerance": 0.0, "expected_label": null}
+      ]
+    },
+    "chinese_phishing": {
+      "type": "CHINESE",
+      "language": "zh",
+      "test_cases": [
+        {"input": "【工商银行】您的账户涉嫌洗钱，请配合调查", "expected_score": -1.0, "tolerance": 0.0, "expected_label": null},
+        {"input": "明天下午3点的会议改到4点半了", "expected_score": -1.0, "tolerance": 0.0, "expected_label": null}
+      ]
+    },
+    "english_phishing": {
+      "type": "ENGLISH",
+      "language": "en",
+      "test_cases": [
+        {"input": "URGENT: Your PayPal account is limited", "expected_score": -1.0, "tolerance": 0.0, "expected_label": null},
+        {"input": "Hey, are we still on for lunch today?", "expected_score": -1.0, "tolerance": 0.0, "expected_label": null}
+      ]
+    },
+    "sms_phishing": {
+      "type": "CHINESE",
+      "language": "zh",
+      "test_cases": [
+        {"input": "【社保局】您的社保卡已被暂停使用，请点击 http://sbj-upgrade.com 重新激活", "expected_score": -1.0, "tolerance": 0.0, "expected_label": null},
+        {"input": "【中国移动】您本月剩余流量5.8GB", "expected_score": -1.0, "tolerance": 0.0, "expected_label": null}
+      ]
+    }
+  }
+}

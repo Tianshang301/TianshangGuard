@@ -1,11 +1,11 @@
 """
-Clean chinese_real_dataset.csv:
-  1. Remove FBS source (SMS model handles these)
-  2. Fix mislabeled legit samples (escort/gambling/fake docs with contact info)
-  3. Remove noise (control chars, too short, number-only, garbage tokens)
-  4. Remove exact duplicates
-  5. Balance dataset (downsample legit to match fraud)
-  6. Save cleaned CSV
+v2 — Clean chinese_real_dataset.csv:
+   1. Remove FBS source (no-op in v2 — FBS already excluded from pipeline)
+   2. Fix mislabeled legit samples (escort/gambling/fake docs with contact info)
+   3. Remove noise (control chars, too short, number-only, garbage tokens)
+   4. Remove exact duplicates
+   5. Balance dataset (downsample legit to match fraud)
+   6. Save cleaned CSV
 """
 import csv, os, re, sys
 

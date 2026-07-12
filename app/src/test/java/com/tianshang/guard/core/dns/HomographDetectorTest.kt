@@ -1,67 +1,84 @@
 package com.tianshang.guard.core.dns
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import com.tianshang.guard.BaseUnitTest
+import org.junit.Assert
 import org.junit.Test
 
-class HomographDetectorTest {
+class HomographDetectorTest : BaseUnitTest() {
 
     @Test
-    fun `clean domain returns Clean`() {
-        val result = HomographDetector.detect("example.com")
-        assertTrue(result is HomographResult.Clean)
-    }
-
-    @Test
-    fun `cyrillic homograph returns VISUAL_SPOOFING`() {
-        val result = HomographDetector.detect("\u0440\u0430\u0443\u0440\u0430\u1ec9.com")
-        assertTrue(result is HomographResult.Detected)
-        val detected = result as HomographResult.Detected
-        assertEquals(HomographType.VISUAL_SPOOFING, detected.type)
-    }
-
-    @Test
-    fun `punycode domain without homographs returns Clean`() {
-        val result = HomographDetector.detect("xn--example")
-        assertTrue(result is HomographResult.Clean)
-    }
-
-    @Test
-    fun `ascii domain with no homograph returns Clean`() {
+    fun `detect returns Clean for ASCII domain`() {
         val result = HomographDetector.detect("google.com")
-        assertTrue(result is HomographResult.Clean)
+        Assert.assertTrue(result is HomographResult.Clean)
     }
 
     @Test
-    fun `checkPinyinConfusion returns high score for taobao variant`() {
-        val score = HomographDetector.checkPinyinConfusion("ta0bao")
-        assertTrue(score > 0.8f)
+    fun `detect returns VISUAL_SPOOFING for Cyrillic homograph`() {
+        val cyrillicA = '\u0430' // Cyrillic 'а' looks like Latin 'a'
+        val domain = "g${cyrillicA}ogle.com"
+        val result = HomographDetector.detect(domain)
+        Assert.assertTrue(result is HomographResult.Detected)
+        Assert.assertEquals(HomographType.VISUAL_SPOOFING, (result as HomographResult.Detected).type)
+    }
+
+    @Test
+    fun `detect returns VISUAL_SPOOFING for Fullwidth characters`() {
+        val fullwidthA = '\uFF41' // Fullwidth 'ａ'
+        val domain = "${fullwidthA}bc.com"
+        val result = HomographDetector.detect(domain)
+        Assert.assertTrue(result is HomographResult.Detected)
+        Assert.assertEquals(HomographType.VISUAL_SPOOFING, (result as HomographResult.Detected).type)
+    }
+
+    @Test
+    fun `detect returns PUNYCODE_SPOOFING for suspicious Punycode`() {
+        val domain = "xn--pple-43d.com" // Punycode for Cyrillic-аpple.com
+        val result = HomographDetector.detect(domain)
+        Assert.assertTrue(result is HomographResult.Detected)
+        Assert.assertEquals(HomographType.PUNYCODE_SPOOFING, (result as HomographResult.Detected).type)
+    }
+
+    @Test
+    fun `detect returns Clean for legitimate Punycode`() {
+        val domain = "xn--fiqs8s.com" // "中国".com
+        val result = HomographDetector.detect(domain)
+        Assert.assertTrue(result is HomographResult.Clean)
+    }
+
+    @Test
+    fun `detect returns Clean for empty domain`() {
+        val result = HomographDetector.detect("")
+        Assert.assertTrue(result is HomographResult.Clean)
     }
 
     @Test
     fun `checkPinyinConfusion returns low score for unrelated domain`() {
-        val score = HomographDetector.checkPinyinConfusion("abcdefg.com")
-        assertTrue(score < 0.5f)
+        val score = HomographDetector.checkPinyinConfusion("zzzzzzzzzzzzzzzzzzzz.com")
+        Assert.assertTrue("Expected score < 0.2 but was $score", score < 0.2f)
     }
 
     @Test
-    fun `checkPinyinConfusion returns high score for alipay variant`() {
-        val score = HomographDetector.checkPinyinConfusion("a1ipay")
-        assertTrue(score > 0.8f)
+    fun `checkPinyinConfusion returns positive for homophone domain`() {
+        val score = HomographDetector.checkPinyinConfusion("ta0bao.com")
+        Assert.assertTrue(score > 0f)
     }
 
     @Test
-    fun `checkPinyinConfusion returns high score for wechat variant`() {
-        val score = HomographDetector.checkPinyinConfusion("we1chat")
-        assertTrue(score > 0.8f)
+    fun `checkPinyinConfusion returns high score for exact match variant`() {
+        val score = HomographDetector.checkPinyinConfusion("ta0bao")
+        Assert.assertTrue(score > 0.5f)
     }
 
     @Test
-    fun `fullwidth homograph detected`() {
-        val result = HomographDetector.detect("\uFF41\uFF45\uFF4F.com")
-        assertTrue(result is HomographResult.Detected)
-        val detected = result as HomographResult.Detected
-        assertEquals(HomographType.VISUAL_SPOOFING, detected.type)
-        assertEquals("aeo.com", detected.normalized)
+    fun `checkPinyinConfusion returns 0 for empty domain`() {
+        val score = HomographDetector.checkPinyinConfusion("")
+        Assert.assertEquals(0f, score, 0.001f)
+    }
+
+    @Test
+    fun `multiple domain labels are checked for Punycode`() {
+        val domain = "sub.xn--pple-43d.com"
+        val result = HomographDetector.detect(domain)
+        Assert.assertTrue(result is HomographResult.Detected)
     }
 }

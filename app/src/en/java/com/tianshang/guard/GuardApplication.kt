@@ -4,8 +4,6 @@ import android.app.Application
 import com.tianshang.guard.core.ml.MlEngine
 import com.tianshang.guard.core.ml.ModelType
 import com.tianshang.guard.core.retrieval.KnowledgeBase
-import com.tianshang.guard.data.local.database.DomainCategory
-import com.tianshang.guard.data.local.database.DomainEntity
 import com.tianshang.guard.data.repository.RuleRepository
 import com.tianshang.guard.di.appModule
 import org.json.JSONArray

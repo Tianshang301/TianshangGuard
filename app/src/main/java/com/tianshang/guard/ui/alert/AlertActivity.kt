@@ -275,7 +275,7 @@ fun SmsPhishingAlert(sender: String, body: String, onDismiss: () -> Unit, onFeed
                             Column(modifier = Modifier.padding(12.dp)) {
                                 if (mlScore != null) {
                                     Text(
-                                        stringResource(R.string.alert_ml_score, String.format("%.2f", mlScore)),
+                                        stringResource(R.string.alert_ml_score, String.format(java.util.Locale.ROOT, "%.2f", mlScore)),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = OnSurfaceDark
                                     )

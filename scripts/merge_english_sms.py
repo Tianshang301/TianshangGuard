@@ -45,6 +45,24 @@ def load_imc25_english():
                 rows.append((text, 1))
     return rows
 
+def load_combined84k():
+    """Combined Smishing Dataset (84K): smishing_label=1 -> fraud, 0 -> non-smishing (mixed legit/spam).
+    Per PLAN.md §4.1.3: label=0 messages may contain spam, not pure legitimate.
+    We keep them as label=0 for initial training, but flag for manual review."""
+    rows = []
+    path = os.path.join(OUTPUT_DIR, "combined_smishing", "Combined-Labeled-Dataset.csv")
+    if not os.path.exists(path):
+        return rows
+    with open(path, "r", encoding="utf-8", errors="replace") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            text = row.get("message", "").strip()
+            smishing = row.get("smishing label", "0").strip()
+            if text and len(text) > 10:
+                label = 1 if smishing == "1" else 0
+                rows.append((text, label))
+    return rows
+
 def load_synthetic_legitimate():
     """Synthetic legitimate SMS: all legitimate (label=0)"""
     rows = []
@@ -88,6 +106,12 @@ def main():
     imc25 = load_imc25_english()
     print(f"  IMC25: {len(imc25)} English phishing messages")
 
+    print("Loading Combined 84K Smishing Dataset...")
+    combined84k = load_combined84k()
+    c84k_phish = sum(1 for _, l in combined84k if l == 1)
+    c84k_legit = sum(1 for _, l in combined84k if l == 0)
+    print(f"  Combined 84K: {len(combined84k)} total ({c84k_phish} smishing, {c84k_legit} non-smishing)")
+
     print("Loading synthetic phishing SMS...")
     syn_phishing = load_synthetic_phishing()
     print(f"  Synthetic phishing: {len(syn_phishing)} messages")
@@ -96,7 +120,7 @@ def main():
     syn_legit = load_synthetic_legitimate()
     print(f"  Synthetic legitimate: {len(syn_legit)} messages")
 
-    all_rows = uci + ncsu + imc25 + syn_phishing + syn_legit
+    all_rows = uci + ncsu + imc25 + combined84k + syn_phishing + syn_legit
     total_phishing = sum(1 for _, l in all_rows if l == 1)
     total_legit = sum(1 for _, l in all_rows if l == 0)
 

@@ -8,14 +8,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class LocalDnsEngine(
     private val ruleRepository: RuleRepository,
     private val alertEngine: AlertEngine,
     private val homographDetector: HomographDetector,
-    private val mlEngine: MlEngine
+    private val mlEngine: MlEngine,
+    private val web3Detector: Web3DomainDetector = Web3DomainDetector()
 ) : DnsEngine {
 
     @Volatile private var bloomFilter = AdaptiveBloomFilter(
@@ -69,6 +69,16 @@ class LocalDnsEngine(
         if (pinyinScore > 0.85f) {
             alertEngine.showSuspiciousDomainWarning(domain, pinyinScore)
             return DnsResult.Block(BlockReason.SUSPICIOUS)
+        }
+
+        // v1.5.0: Web3 domain detection (ENS, Unstoppable, SID)
+        val web3Result = web3Detector.detect(domain)
+        if (web3Result is Web3DomainResult.Detected) {
+            val riskScore = web3Detector.getRiskLevel(domain)
+            if (riskScore >= 0.7f) {
+                alertEngine.showSuspiciousDomainWarning(domain, riskScore)
+                return DnsResult.Block(BlockReason.SUSPICIOUS)
+            }
         }
 
         val similarityScore = calculateDomainSimilarity(domain)
@@ -126,22 +136,20 @@ class LocalDnsEngine(
         }
     }
 
-    override fun start() {
-        runBlocking {
-            val allDomains = ruleRepository.getKnownDomains()
-            val newFilter = AdaptiveBloomFilter(
-                expectedItems = if (allDomains.size * 2 > 100_000) allDomains.size * 2 else 100_000,
-                targetFpp = 0.001
-            )
-            allDomains.forEach { newFilter.add(it) }
-            // M-16: Atomic swap to prevent partial initialization
-            synchronized(cacheLock) {
-                bloomFilter = newFilter
-                cachedKnownDomains = allDomains
-                lastDomainCacheUpdate = System.currentTimeMillis()
-                rebuildBkTree()
-                initialized = true
-            }
+    override suspend fun start() {
+        val allDomains = ruleRepository.getKnownDomains()
+        val newFilter = AdaptiveBloomFilter(
+            expectedItems = if (allDomains.size * 2 > 100_000) allDomains.size * 2 else 100_000,
+            targetFpp = 0.001
+        )
+        allDomains.forEach { newFilter.add(it) }
+        // M-16: Atomic swap to prevent partial initialization
+        synchronized(cacheLock) {
+            bloomFilter = newFilter
+            cachedKnownDomains = allDomains
+            lastDomainCacheUpdate = System.currentTimeMillis()
+            rebuildBkTree()
+            initialized = true
         }
     }
 
@@ -152,14 +160,12 @@ class LocalDnsEngine(
         scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     }
 
-    override fun addToWhitelist(domain: String) {
-        scope.launch { ruleRepository.addToWhitelist(domain) }
+    override suspend fun addToWhitelist(domain: String) {
+        ruleRepository.addToWhitelist(domain)
     }
 
-    override fun addToBlacklist(domain: String) {
-        scope.launch {
-            ruleRepository.addToBlacklist(domain)
-            bloomFilter.add(domain)
-        }
+    override suspend fun addToBlacklist(domain: String) {
+        ruleRepository.addToBlacklist(domain)
+        bloomFilter.add(domain)
     }
 }

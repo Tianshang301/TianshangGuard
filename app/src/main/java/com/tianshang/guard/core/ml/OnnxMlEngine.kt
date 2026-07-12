@@ -3,54 +3,66 @@ package com.tianshang.guard.core.ml
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import ai.onnxruntime.OnnxTensor
-import android.content.Context
+import android.annotation.SuppressLint
 import com.tianshang.guard.core.util.SecureLog
 import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern
 
-class OnnxMlEngine(private val context: Context) : MlEngine {
+class OnnxMlEngine(
+    private val ortEnvironment: OrtEnvironment? = null,
+    bpeTokenizer: BpeTokenizer? = null
+) : MlEngine {
 
-    private val sessions = ConcurrentHashMap<ModelType, OrtSession>()
+    internal val sessions = ConcurrentHashMap<ModelType, OrtSession>()
+    internal val env: OrtEnvironment get() = ortEnvironment ?: OrtEnvironment.getEnvironment()
     private val urlPattern = Pattern.compile("https?://[^\\s]+")
-    
-    // BPE tokenizer with fallback to byte tokenizer
-    private val bpeTokenizer = BpeTokenizer(context)
-    private var useBpe = false
 
-    init {
-        // Try to load BPE tokenizer
-        useBpe = bpeTokenizer.load()
-        if (useBpe) {
-            SecureLog.i("OnnxMlEngine", "BPE tokenizer loaded successfully")
-        } else {
-            SecureLog.w("OnnxMlEngine", "BPE tokenizer not available, using byte tokenizer")
+    @SuppressLint("LogNotTimber")
+    private val bpeTokenizer: BpeTokenizer? = bpeTokenizer?.also {
+        if (it.isReady()) {
+            SecureLog.i("OnnxMlEngine", "BPE tokenizer injected and ready")
         }
     }
 
     private fun encode(text: String, maxLength: Int = 512): LongArray {
-        return if (useBpe) {
-            bpeTokenizer.encode(text, maxLength)
+        val bpe = bpeTokenizer
+        return if (bpe != null && bpe.isReady()) {
+            bpe.encode(text, maxLength)
         } else {
             ByteTokenizer.encode(text, maxLength)
         }
     }
 
+    private fun normalizeUrlForModel(url: String): String {
+        return url.removePrefix("www.")
+    }
+
+    private fun isBareDomain(url: String): Boolean {
+        val domainOnly = url
+            .removePrefix("https://").removePrefix("http://")
+            .removePrefix("www.")
+            .split("/").first()
+        val dotCount = domainOnly.count { c -> c == '.' }
+        val schemeIdx = url.indexOf("://")
+        val pathStart = if (schemeIdx >= 0) schemeIdx + 3 else 0
+        return dotCount <= 1 && url.indexOf('/', pathStart) < 0
+    }
+
     override fun loadModel(modelPath: String, type: ModelType) {
-        val env = OrtEnvironment.getEnvironment()
         val sessionOptions = OrtSession.SessionOptions().apply {
             try { addNnapi() } catch (_: Exception) {}
             setIntraOpNumThreads(2)
         }
         val newSession = env.createSession(modelPath, sessionOptions)
-        // C-6: Close old session before replacing to prevent native memory leak
         val oldSession = sessions.put(type, newSession)
         oldSession?.close()
     }
 
     fun analyzeWithModel(text: String, type: ModelType): RiskLevel {
         val session = sessions[type] ?: return RiskLevel.SAFE
-        val inputIds = encode(text)
-        OnnxTensor.createTensor(OrtEnvironment.getEnvironment(), arrayOf(inputIds)).use { inputTensor ->
+        val normalized = if (type == ModelType.URL) normalizeUrlForModel(text) else text
+        val inputIds = encode(normalized)
+        OnnxTensor.createTensor(env, arrayOf(inputIds)).use { inputTensor ->
             session.run(mapOf("input" to inputTensor)).use { outputs ->
                 val score = (outputs?.get(0)?.value as? FloatArray)?.firstOrNull() ?: 0f
                 return RiskLevel.fromScore(score)
@@ -60,8 +72,9 @@ class OnnxMlEngine(private val context: Context) : MlEngine {
 
     fun analyzeWithModelScore(text: String, type: ModelType): Float {
         val session = sessions[type] ?: return 0f
-        val inputIds = encode(text)
-        OnnxTensor.createTensor(OrtEnvironment.getEnvironment(), arrayOf(inputIds)).use { inputTensor ->
+        val normalized = if (type == ModelType.URL) normalizeUrlForModel(text) else text
+        val inputIds = encode(normalized)
+        OnnxTensor.createTensor(env, arrayOf(inputIds)).use { inputTensor ->
             session.run(mapOf("input" to inputTensor)).use { outputs ->
                 return (outputs?.get(0)?.value as? FloatArray)?.firstOrNull() ?: 0f
             }
@@ -83,18 +96,15 @@ class OnnxMlEngine(private val context: Context) : MlEngine {
     }
 
     fun analyzeSmsScore(text: String): Float {
-        val textModelType = detectLanguage(text)
-        val textScore = analyzeWithModelScore(text, textModelType)
         val smsScore = analyzeWithModelScore(text, ModelType.SMS)
         val url = extractUrl(text)
-        val urlScore = if (url != null) analyzeWithModelScore(url, ModelType.URL) else 0f
-        return maxOf(textScore, smsScore, urlScore)
-    }
+        if (url == null) return smsScore
 
-    private fun detectLanguage(text: String): ModelType {
-        val hasChinese = text.any { it in '\u4E00'..'\u9FFF' }
-        if (hasChinese) return ModelType.CHINESE
-        return ModelType.ENGLISH
+        var urlScore = analyzeWithModelScore(url, ModelType.URL)
+        if (isBareDomain(url)) {
+            urlScore *= 0.5f
+        }
+        return maxOf(smsScore, urlScore)
     }
 
     private fun extractUrl(text: String): String? {
@@ -130,7 +140,9 @@ class OnnxMlEngine(private val context: Context) : MlEngine {
         if (length == 0f) return RiskLevel.SAFE
         val entropy = features[1]
         val digitRatio = features[2] / length
+        val hasHomograph = features.getOrElse(3) { 0f } > 0f
         return when {
+            hasHomograph -> RiskLevel.SUSPICIOUS
             entropy > 3.5f && digitRatio > 0.3f -> RiskLevel.SUSPICIOUS
             else -> RiskLevel.SAFE
         }

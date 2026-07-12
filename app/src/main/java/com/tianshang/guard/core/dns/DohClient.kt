@@ -16,10 +16,13 @@ import java.util.concurrent.TimeUnit
  * Uses Cloudflare's DoH endpoint (https://cloudflare-dns.com/dns-query).
  * Falls back to UDP if DoH fails or times out.
  */
-class DohClient(private val client: OkHttpClient) {
+class DohClient(
+    private val client: OkHttpClient,
+    private val dohUrl: String = DOH_URL_DEFAULT
+) {
 
     companion object {
-        private const val DOH_URL = "https://cloudflare-dns.com/dns-query"
+        private const val DOH_URL_DEFAULT = "https://cloudflare-dns.com/dns-query"
         private const val DOH_TIMEOUT_MS = 3000L
         private const val UDP_FALLBACK_TIMEOUT_MS = 2000L
         private const val UPSTREAM_DNS = "1.1.1.1"
@@ -36,7 +39,11 @@ class DohClient(private val client: OkHttpClient) {
         .connectTimeout(DOH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .readTimeout(DOH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .writeTimeout(DOH_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-        .certificatePinner(CERTIFICATE_PINNER)
+        .apply {
+            if (dohUrl == DOH_URL_DEFAULT) {
+                certificatePinner(CERTIFICATE_PINNER)
+            }
+        }
         .build()
 
     /**
@@ -68,7 +75,7 @@ class DohClient(private val client: OkHttpClient) {
     private fun resolveViaDoh(dnsPayload: ByteArray): ByteArray? {
         return try {
             val request = Request.Builder()
-                .url(DOH_URL)
+                .url(dohUrl)
                 .header("Accept", "application/dns-message")
                 .post(dnsPayload.toRequestBody(DNS_MEDIA_TYPE))
                 .build()

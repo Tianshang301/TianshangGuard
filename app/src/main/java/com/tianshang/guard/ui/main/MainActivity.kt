@@ -85,7 +85,7 @@ class MainActivity : ComponentActivity(), KoinComponent {
     override fun attachBaseContext(newBase: Context) {
         // Apply language setting before onCreate()
         val language = kotlinx.coroutines.runBlocking {
-            com.tianshang.guard.data.local.GuardPreferences(newBase).language.first()
+            com.tianshang.guard.data.local.GuardPreferences.create(newBase).language.first()
         }
         val wrappedContext = LocaleHelper.wrapContext(newBase, language)
         super.attachBaseContext(wrappedContext)
@@ -118,18 +118,14 @@ private fun startVpnService(context: Context) {
     val intent = Intent(context, GuardVpnService::class.java).apply {
         action = GuardVpnService.ACTION_START
     }
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        context.startForegroundService(intent)
-    } else {
-        context.startService(intent)
-    }
+    context.startForegroundService(intent)
 }
 
 private fun stopVpnService(context: Context) {
     val intent = Intent(context, GuardVpnService::class.java).apply {
         action = GuardVpnService.ACTION_STOP
     }
-    context.startService(intent)
+    context.stopService(intent)
 }
 
 @Composable
@@ -338,6 +334,7 @@ fun StatItem(value: String, label: String, color: Color) {
 
 @Composable
 fun QuickActionsRow(onNavigateToStats: () -> Unit, onNavigateToReport: () -> Unit) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -349,7 +346,12 @@ fun QuickActionsRow(onNavigateToStats: () -> Unit, onNavigateToReport: () -> Uni
         ) {
             ActionButton(emoji = "\uD83D\uDEAB", label = stringResource(R.string.action_quick_report), onClick = onNavigateToReport)
             ActionButton(emoji = "\uD83D\uDCCA", label = stringResource(R.string.action_view_stats), onClick = onNavigateToStats)
-            ActionButton(emoji = "\uD83D\uDEE1\uFE0F", label = stringResource(R.string.action_full_check), onClick = onNavigateToReport)
+            ActionButton(emoji = "\uD83D\uDD0D", label = stringResource(R.string.action_scan_qr), onClick = {
+                val intent = Intent(context, com.tianshang.guard.ui.qr.QrPreviewActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(intent)
+            })
         }
     }
 }

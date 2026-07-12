@@ -296,7 +296,51 @@ def evaluate_model(mode, model, config, label_prefix=""):
     result["overfitting_check"] = of_check
     print(f"  Overfitting check: {of_check['verdict']} (gap_acc={of_check['gap_accuracy']:.4f}, gap_f1={of_check['gap_f1']:.4f})")
     
-    # 4. Edge cases
+    # 4. Test A: Domain-only (no path) — verify no path=phishing spurious correlation
+    if is_url:
+        domain_only_texts = []
+        domain_only_labels = []
+        phish_tld_domains = PHISH_TLD_DOMAINS + [
+            "login-secure.xyz", "verify-account.top", "banking-secure.xyz",
+            "payment-confirm.net", "secure-auth.xyz", "account-update.top",
+        ]
+        legit_tld_domains = LEGIT_DOMAINS + [
+            "npmjs.com", "docker.com", "gitlab.com", "bitbucket.org",
+            "cloudflare.com", "fastly.com", "jsdelivr.net", "cdnjs.com",
+        ]
+        for d in phish_tld_domains:
+            domain_only_texts.append(f"https://{d} [SEP] 0")
+            domain_only_labels.append(1.0)
+        for d in legit_tld_domains:
+            domain_only_texts.append(f"https://{d} [SEP] 0")
+            domain_only_labels.append(0.0)
+        do_scores = predict(model, config, domain_only_texts)
+        do_metrics = compute_metrics(do_scores, np.array(domain_only_labels))
+        result["test_A_domain_only"] = do_metrics
+        do_pass = do_metrics["f1"] >= 0.85 and do_metrics["fpr"] <= 0.02
+        print(f"  Test A (domain-only, {len(domain_only_texts)}): Acc={do_metrics['accuracy']:.4f} "
+              f"F1={do_metrics['f1']:.4f} FPR={do_metrics['fpr']:.4f} "
+              f"{'✅ PASS' if do_pass else '❌ FAIL'}")
+
+        # Test B: Pure URL string (no features) — verify no feature dependency
+        url_string_texts = []
+        url_string_labels = []
+        for domain in phish_tld_domains:
+            for path in ["/login", "/verify", "/confirm"]:
+                url_string_texts.append(f"https://{domain}{path} [SEP] 0")
+                url_string_labels.append(1.0)
+        for domain in legit_tld_domains:
+            for path in ["/about", "/contact", "/blog"]:
+                url_string_texts.append(f"https://{domain}{path} [SEP] 0")
+                url_string_labels.append(0.0)
+        us_scores = predict(model, config, url_string_texts)
+        us_metrics = compute_metrics(us_scores, np.array(url_string_labels))
+        result["test_B_url_string"] = us_metrics
+        us_pass = us_metrics["f1"] >= 0.85
+        print(f"  Test B (URL string only, {len(url_string_texts)}): Acc={us_metrics['accuracy']:.4f} "
+              f"F1={us_metrics['f1']:.4f} {'✅ PASS' if us_pass else '❌ FAIL'}")
+
+    # 5. Edge cases
     if is_url:
         edge_texts = [
             ("https://github.com/user/repo [SEP] GitHub", 0),
@@ -470,6 +514,8 @@ if __name__ == "__main__":
         sd = result.get("synthetic_score_distribution", result.get("score_distribution", {}))
         st = result.get("synthetic_test", {})
         ht = result.get("holdout_test", {})
+        ta = result.get("test_A_domain_only", {})
+        tb = result.get("test_B_url_string", {})
         
         problems = []
         # Primary metric: real holdout data (URL: PhiUSIIL, Chinese: synthetic)
@@ -485,6 +531,16 @@ if __name__ == "__main__":
             all_ok = False
         if sd.get("overlap_ratio", 1) > 0.2 and not ht:
             problems.append(f"score overlap {sd['overlap_ratio']:.2%}")
+            all_ok = False
+        # Test A/B for URL mode
+        if ta.get("f1", 1) < 0.85:
+            problems.append(f"Test A (domain-only) F1={ta['f1']:.3f}")
+            all_ok = False
+        if ta.get("fpr", 1) > 0.02:
+            problems.append(f"Test A FPR={ta['fpr']:.4f}")
+            all_ok = False
+        if tb.get("f1", 1) < 0.85:
+            problems.append(f"Test B (URL string) F1={tb['f1']:.3f}")
             all_ok = False
         
         if problems:

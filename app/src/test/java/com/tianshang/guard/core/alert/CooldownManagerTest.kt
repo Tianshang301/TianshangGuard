@@ -1,56 +1,55 @@
 package com.tianshang.guard.core.alert
 
-import com.tianshang.guard.data.local.GuardPreferences
+import com.tianshang.guard.BaseUnitTest
 import io.mockk.mockk
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 
-class CooldownManagerTest {
+class CooldownManagerTest : BaseUnitTest() {
 
     private lateinit var cooldownManager: CooldownManager
 
     @Before
     fun setUp() {
-        cooldownManager = CooldownManager(mockk<GuardPreferences>(relaxed = true))
+        cooldownManager = CooldownManager(mockk(relaxed = true))
     }
 
     @Test
-    fun `no trigger recorded returns false`() {
-        assertFalse(cooldownManager.isInCooldown("test-key", 60))
+    fun `isInCooldown returns false for unknown key`() {
+        Assert.assertFalse(cooldownManager.isInCooldown("unknown", 300))
     }
 
     @Test
-    fun `cooldownSeconds zero disables cooldown`() {
-        cooldownManager.recordTrigger("test-key")
-        assertFalse(cooldownManager.isInCooldown("test-key", 0))
+    fun `isInCooldown returns true within cooldown period`() {
+        cooldownManager.recordTrigger("test_key")
+        Assert.assertTrue(cooldownManager.isInCooldown("test_key", 300))
     }
 
     @Test
-    fun `cooldownSeconds negative disables cooldown`() {
-        cooldownManager.recordTrigger("test-key")
-        assertFalse(cooldownManager.isInCooldown("test-key", -1))
+    fun `isInCooldown returns false for zero cooldown`() {
+        cooldownManager.recordTrigger("test_key")
+        Assert.assertFalse(cooldownManager.isInCooldown("test_key", 0))
     }
 
     @Test
-    fun `recently recorded trigger returns true`() {
-        cooldownManager.recordTrigger("test-key")
-        assertTrue(cooldownManager.isInCooldown("test-key", 60))
+    fun `isInCooldown returns false for negative cooldown`() {
+        cooldownManager.recordTrigger("test_key")
+        Assert.assertFalse(cooldownManager.isInCooldown("test_key", -1))
     }
 
     @Test
-    fun `different keys have independent cooldowns`() {
-        cooldownManager.recordTrigger("key-1")
-        assertTrue(cooldownManager.isInCooldown("key-1", 60))
-        assertFalse(cooldownManager.isInCooldown("key-2", 60))
+    fun `multiple keys are tracked independently`() {
+        cooldownManager.recordTrigger("key_a")
+        cooldownManager.recordTrigger("key_b")
+        Assert.assertTrue(cooldownManager.isInCooldown("key_a", 60))
+        Assert.assertTrue(cooldownManager.isInCooldown("key_b", 60))
     }
 
     @Test
-    fun `recooldown resets timer`() {
-        cooldownManager.recordTrigger("test-key")
-        assertTrue(cooldownManager.isInCooldown("test-key", 60))
-        cooldownManager.recordTrigger("test-key")
-        assertTrue(cooldownManager.isInCooldown("test-key", 60))
+    fun `recordTrigger overwrites previous trigger`() {
+        cooldownManager.recordTrigger("key")
+        cooldownManager.recordTrigger("key")
+        Assert.assertTrue(cooldownManager.isInCooldown("key", 300))
     }
 }

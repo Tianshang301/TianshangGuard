@@ -28,6 +28,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.android.inject
 
 class GuardVpnService : VpnService() {
@@ -111,7 +112,7 @@ class GuardVpnService : VpnService() {
         lastPacketTime = System.currentTimeMillis()
         SecureLog.i("GuardVpnService", "VPN established")
 
-        dnsEngine.start()
+        runBlocking { dnsEngine.start() }
         SecureLog.i("GuardVpnService", "DnsEngine started")
 
         startForeground(NOTIFICATION_ID, createNotification())

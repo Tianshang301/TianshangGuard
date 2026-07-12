@@ -4,6 +4,11 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+    id("jacoco")
+}
+
+jacoco {
+    toolVersion = "0.8.12"
 }
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -30,12 +35,13 @@ android {
         applicationId = "com.tianshang.guard"
         minSdk = 26
         targetSdk = 35
-        versionCode = 11
-        versionName = "1.4.2"
+        versionCode = 12
+        versionName = "1.5.0"
 
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -69,6 +75,7 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        unitTests.isIncludeAndroidResources = true
     }
 
     composeOptions {
@@ -137,7 +144,61 @@ dependencies {
 
     implementation(libs.sqlcipher)
 
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
+
+    implementation(libs.zxing.core)
+
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    testImplementation(libs.koin.test)
+    testImplementation(libs.okhttp.mockwebserver)
+    testImplementation(libs.androidx.arch.core.testing)
+    testImplementation(libs.onnxruntime)
+
     androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.room.testing)
+
+    debugImplementation(libs.compose.ui.test.manifest)
+}
+
+tasks.register("jacocoTestReport", JacocoReport::class) {
+    dependsOn("testUnifiedDebugUnitTest")
+
+    val fileFilter = listOf(
+        "**/R.class",
+        "**/R\$*.class",
+        "**/BuildConfig.*",
+        "**/Manifest*.*",
+        "**/databinding/*",
+        "**/BR.class",
+        "**/di/*",
+        "**/data/local/database/*",
+        "**/data/remote/*"
+    )
+    val kotlinClasses = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/unifiedDebug")) {
+        exclude(fileFilter)
+    }
+    val javaClasses = fileTree(layout.buildDirectory.dir("intermediates/javac/unifiedDebug")) {
+        exclude(fileFilter)
+    }
+    val execDataTree = fileTree(layout.buildDirectory) {
+        include("jacoco/testUnifiedDebugUnitTest.exec")
+        include("outputs/unit_test_code_coverage/unifiedDebugUnitTest/**/*.ec")
+    }
+    sourceDirectories.setFrom(files("src/main/java", "src/unified/java"))
+    classDirectories.setFrom(kotlinClasses, javaClasses)
+    executionData.setFrom(execDataTree)
+
+    reports {
+        html.required.set(true)
+        xml.required.set(true)
+        csv.required.set(false)
+    }
 }

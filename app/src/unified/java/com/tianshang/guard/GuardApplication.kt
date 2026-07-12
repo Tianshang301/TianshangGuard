@@ -48,10 +48,7 @@ class GuardApplication : Application() {
             Thread({
                 if (modelsLoading.compareAndSet(false, true)) {
                     try {
-                        // Chinese + SMS models
-                        val chineseModelFile = extractModelToCache("chinese_phishing.onnx")
-                        mlEngine.loadModel(chineseModelFile, ModelType.CHINESE)
-
+                        // SMS models
                         val smsModelFile = extractModelToCache("sms_phishing.onnx")
                         mlEngine.loadModel(smsModelFile, ModelType.SMS)
 
@@ -59,7 +56,7 @@ class GuardApplication : Application() {
                         val englishModelFile = extractModelToCache("english_phishing.onnx")
                         mlEngine.loadModel(englishModelFile, ModelType.ENGLISH)
 
-                        android.util.Log.i("GuardApp", "Unified: loaded CHINESE, SMS, ENGLISH models")
+                        android.util.Log.i("GuardApp", "Unified: loaded SMS, ENGLISH models")
                     } catch (e: Exception) {
                         android.util.Log.e("GuardApp", "Failed to load models in background", e)
                     } finally {

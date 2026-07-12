@@ -31,7 +31,7 @@ class SmsReceiver : BroadcastReceiver(), KoinComponent {
                     val sender = message.displayOriginatingAddress ?: "unknown"
                     val body = message.messageBody ?: continue
 
-                    val riskLevel = analyzeSmsUseCase.execute(sender, body)
+                    val riskLevel = analyzeSmsUseCase.execute(body)
                     if (riskLevel == RiskLevel.SUSPICIOUS || riskLevel == RiskLevel.DANGEROUS) {
                         alertEngine.showSmsWarning(sender, body, riskLevel)
                     }

@@ -13,9 +13,9 @@ enum class BlockReason {
 }
 
 interface DnsEngine {
-    fun start()
+    suspend fun start()
     fun stop()
     fun resolve(domain: String): DnsResult
-    fun addToWhitelist(domain: String)
-    fun addToBlacklist(domain: String)
+    suspend fun addToWhitelist(domain: String)
+    suspend fun addToBlacklist(domain: String)
 }

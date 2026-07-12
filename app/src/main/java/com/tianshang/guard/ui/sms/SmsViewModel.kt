@@ -32,7 +32,7 @@ class SmsViewModel(
     fun analyze(sender: String, body: String) {
         // BUGFIX: Run ML inference on IO dispatcher to avoid blocking main thread
         viewModelScope.launch(Dispatchers.IO) {
-            val riskLevel = analyzeSmsUseCase.execute(sender, body)
+            val riskLevel = analyzeSmsUseCase.execute(body)
             withContext(Dispatchers.Main) {
                 _result.value = SmsAnalysisResult(sender, body, riskLevel, true)
             }

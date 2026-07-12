@@ -1,0 +1,72 @@
+[
+  {
+    "text": "【中国移动】您的积分即将到期，请点击链接兑换话费：http://10086-reward.top",
+    "model_score": 0.85,
+    "label": "PHISHING",
+    "source": "sms",
+    "timestamp": 1719500000000
+  },
+  {
+    "text": "【工商银行】您的账户存在异常登录，请立即验证身份",
+    "model_score": 0.92,
+    "label": "PHISHING",
+    "source": "sms",
+    "timestamp": 1719500100000
+  },
+  {
+    "text": "恭喜您获得10000元现金大奖！请立即联系客服领取",
+    "model_score": 0.95,
+    "label": "PHISHING",
+    "source": "sms",
+    "timestamp": 1719500200000
+  },
+  {
+    "text": "您的银行账户涉嫌洗钱，请配合调查，将资金转入安全账户",
+    "model_score": 0.98,
+    "label": "PHISHING",
+    "source": "sms",
+    "timestamp": 1719500300000
+  },
+  {
+    "text": "【ETC通知】您的ETC账户已失效，请点击链接重新激活",
+    "model_score": 0.88,
+    "label": "PHISHING",
+    "source": "sms",
+    "timestamp": 1719500400000
+  },
+  {
+    "text": "【中国移动】尊敬的客户，您本月流量已用完，可办理流量加油包",
+    "model_score": 0.12,
+    "label": "FALSE_POSITIVE",
+    "source": "sms",
+    "timestamp": 1719500500000
+  },
+  {
+    "text": "【工商银行】您尾号1234的储蓄卡账户消费人民币150.00元",
+    "model_score": 0.08,
+    "label": "FALSE_POSITIVE",
+    "source": "sms",
+    "timestamp": 1719500600000
+  },
+  {
+    "text": "【支付宝】您已成功转账500.00元给张三",
+    "model_score": 0.05,
+    "label": "FALSE_POSITIVE",
+    "source": "sms",
+    "timestamp": 1719500700000
+  },
+  {
+    "text": "【淘宝】您的订单已发货，快递单号SF1234567890",
+    "model_score": 0.10,
+    "label": "FALSE_POSITIVE",
+    "source": "sms",
+    "timestamp": 1719500800000
+  },
+  {
+    "text": "【12306】您购买的G1234次列车已出票",
+    "model_score": 0.06,
+    "label": "FALSE_POSITIVE",
+    "source": "sms",
+    "timestamp": 1719500900000
+  }
+]

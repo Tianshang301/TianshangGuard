@@ -2,22 +2,20 @@ package com.tianshang.guard.core.ml
 
 enum class ModelType {
     URL,
-    CHINESE,
     ENGLISH,
     SMS
 }
 
 enum class RiskLevel(val threshold: Float) {
-    SAFE(0.10f),
-    SUSPICIOUS(0.50f),
+    SAFE(0.50f),
+    SUSPICIOUS(0.90f),
     DANGEROUS(1.0f);
 
-    // BUGFIX: Convert discrete risk level to continuous score (midpoint of range)
-    // Using .threshold directly causes boundary value escalation (e.g., SUSPICIOUS→0.50→DANGEROUS)
+    // Convert discrete risk level to continuous score (midpoint of range)
     fun toScore(): Float = when (this) {
-        SAFE -> 0.05f
-        SUSPICIOUS -> 0.30f
-        DANGEROUS -> 0.75f
+        SAFE -> 0.25f
+        SUSPICIOUS -> 0.70f
+        DANGEROUS -> 0.95f
     }
 
     companion object {
