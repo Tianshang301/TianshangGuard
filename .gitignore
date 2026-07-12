@@ -132,6 +132,7 @@ scripts/merge_japanese_sms_v3.py
 scripts/prepare_data.py
 scripts/test_20_phishing.py
 scripts/test_old_model.py
+scripts/dashboard.html
 
 # Analysis docs
 docs/japanese_sms_prompt.md
