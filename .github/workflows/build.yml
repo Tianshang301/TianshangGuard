@@ -26,13 +26,13 @@ jobs:
         run: echo "org.gradle.jvmargs=-Xmx4g" >> gradle.properties
 
       - name: Build Zh Debug
-        run: ./gradlew assembleZhDebug
+        run: ./gradlew assembleZhDebug --no-daemon
 
       - name: Build En Debug
-        run: ./gradlew assembleEnDebug
+        run: ./gradlew assembleEnDebug --no-daemon
 
       - name: Build Unified Debug
-        run: ./gradlew assembleUnifiedDebug
+        run: ./gradlew assembleUnifiedDebug --no-daemon
 
       - name: Upload Zh APK
         uses: actions/upload-artifact@v4
