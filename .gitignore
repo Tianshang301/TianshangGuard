@@ -39,8 +39,10 @@ scripts/compare_url_models.py
 scripts/eval_*.py
 scripts/fix_*.py
 scripts/manual_*.py
+scripts/manual_*.json
 scripts/re_export*.py
 scripts/spot_check*.py
+scripts/spot_check*.json
 
 # LaTeX build artifacts
 docs/*.aux
