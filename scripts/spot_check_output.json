@@ -1,0 +1,616 @@
+{
+  "url_cases": [
+    {
+      "text": "https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ConcurrentHashMap.html",
+      "desc": "Oracle 文档",
+      "expected": "legitimate"
+    },
+    {
+      "text": "http://hsbc-alert.security-check.net/verify",
+      "desc": "银行仿冒",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://www.hsbc.com/",
+      "desc": "HSBC",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://kubernetes.io/docs/concepts/",
+      "desc": "技术文档",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://www.nature.com/articles/s41586",
+      "desc": "学术论文",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://www.taobao.com/list/item/123456",
+      "desc": "淘宝商品",
+      "expected": "legitimate"
+    },
+    {
+      "text": "http://dhl-package-delivery.com/address/confirm",
+      "desc": "快递钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://www.zhihu.com/question/12345678",
+      "desc": "知乎",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://microsoft.github.io/TypeScript/docs/handbook/2/everyday-types.html",
+      "desc": "MS 文档",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://fedex-tracking-alert.com/redelivery",
+      "desc": "快递钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://bitcoin-giveaway-elons.com/double",
+      "desc": "加密货币钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://apple-id-verify.com/icloud/restore",
+      "desc": "Apple 钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://developer.android.com/training",
+      "desc": "开发文档",
+      "expected": "legitimate"
+    },
+    {
+      "text": "http://icbc.安全验证.com/login",
+      "desc": "银行仿冒 中文",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://www.gov.uk/bank-holidays",
+      "desc": "英国政府网",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://amazon.com.shopping-claim.com/gift",
+      "desc": "子域名伪装",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://www.amazon.com/dp/B0ABC123",
+      "desc": "Amazon 商品",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://news.ycombinator.com/item?id=111",
+      "desc": "社区",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://wellsfargo-secure.center/login/confirm",
+      "desc": "银行仿冒",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://www.boc.cn/en/index.html",
+      "desc": "中国银行",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://高速etc-fail.com/update",
+      "desc": "中文钓鱼 ETC",
+      "expected": "phishing"
+    },
+    {
+      "text": "http://covid-vaccine-benefits.com/claim",
+      "desc": "医疗钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://arxiv.org/abs/2301.12345",
+      "desc": "预印本",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://www.gооgle.com/auth",
+      "desc": "同形字符 Cyrillic 'о' in google",
+      "expected": "phishing"
+    },
+    {
+      "text": "http://社保-异常.com/activate",
+      "desc": "中文钓鱼 社保",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://www.pаypal.com/login",
+      "desc": "同形字符 Cyrillic 'а' in paypal",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://mail.qq.com/cgi-bin/loginpage",
+      "desc": "QQ 邮箱",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://www.jd.com/pinpai/123.html",
+      "desc": "京东品牌",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://cs231n.github.io/convolutional-networks",
+      "desc": "CS 课程",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://cdn.jsdelivr.net/npm/lodash@4.17.21",
+      "desc": "CDN",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://bank-of-america.secure-verify.com/login",
+      "desc": "银行仿冒",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://www.icbc.com.cn/icbc/",
+      "desc": "工商银行",
+      "expected": "legitimate"
+    },
+    {
+      "text": "http://航延险-理赔.com/refund",
+      "desc": "中文钓鱼 保险",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://wx.tenpay.com/f2f?t=ABC123",
+      "desc": "微信支付",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://x.co/abc123",
+      "desc": "短链接钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://bit.ly/3xYzAbC",
+      "desc": "短链接钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://facebook-login.secure-alert.com/verify",
+      "desc": "社交钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "http://barclays-identity.com/account/restore",
+      "desc": "银行仿冒",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://instagram-verify-badge.com/free",
+      "desc": "社交钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "http://netflix-billing-update.com/payment",
+      "desc": "Netflix 钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://twitter.com/elonmusk/status/123",
+      "desc": "Twitter",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://www.аlibaba.com/verify",
+      "desc": "同形字符 Cyrillic 'а' in alibaba",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://stackoverflow.com/questions/75321",
+      "desc": "技术网站",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://淘宝-周年庆.com/prize",
+      "desc": "中文钓鱼 电商",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://paypal.com.secure-login.net/verify",
+      "desc": "子域名伪装",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://cibc-online-banking.com/auth/verify",
+      "desc": "银行仿冒",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://www.gov.cn/zhengce/content/202401",
+      "desc": "中国政府网",
+      "expected": "legitimate"
+    },
+    {
+      "text": "http://tinyurl.com/paypal-verify",
+      "desc": "短链接钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://www.chase.com/personal",
+      "desc": "Chase",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://www.alipay.com/standard/home.htm",
+      "desc": "支付宝",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://www.kaggle.com/datasets",
+      "desc": "数据科学",
+      "expected": "legitimate"
+    },
+    {
+      "text": "http://amazon-prime-renewal.com/card/update",
+      "desc": "亚马逊钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://pytorch.org/docs/stable/index.html",
+      "desc": "框架文档",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://chase.com.account-alert.net/update",
+      "desc": "子域名伪装",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://www.ircc-immigration.com/visa/update",
+      "desc": "政府钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://www.linkedin.com/in/johndoe",
+      "desc": "LinkedIn",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://fonts.googleapis.com/css2?family=Inter",
+      "desc": "Google Fonts",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://paypal-gift.xyz/claim?amount=500",
+      "desc": "支付钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "http://安全账户-验证.com/login",
+      "desc": "中文钓鱼 安全账户",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://steamcommunity-claim.xyz/free-skins",
+      "desc": "Steam 钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "http://10086-积分兑换.top/gift",
+      "desc": "中文钓鱼 运营商",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://www.github.com",
+      "desc": "主流网站",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://gov-tax-refund.claim-now.com/submit",
+      "desc": "税务钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://工行-安全中心.com/verify",
+      "desc": "中文钓鱼 银行",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://www.usa.gov/benefits",
+      "desc": "美国政府网",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://en.wikipedia.org/wiki/Natural_language_processing",
+      "desc": "百科",
+      "expected": "legitimate"
+    },
+    {
+      "text": "https://www.chasebank-verification.net/account/update",
+      "desc": "银行仿冒",
+      "expected": "phishing"
+    },
+    {
+      "text": "https://api.github.com/repos/torvalds/linux",
+      "desc": "GitHub API",
+      "expected": "legitimate"
+    }
+  ],
+  "sms_cases": [
+    {
+      "text": "【支付宝】您本月的花呗账单已出，应还金额1234.56元，还款日每月9号",
+      "desc": "中文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "【钉钉】您有一个新的审批待处理：请假申请-张三-2025-01-15",
+      "desc": "中文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "Your Amazon package has been delivered. Track: 1Z999AA10123456784",
+      "desc": "英文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "【建设银行】您的信用卡已逾期，将上报征信，请联系 400-xxx-xxx 或点击 http://ccb-verify.com 处理",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "Your BOA account has been locked due to suspicious activity. Verify now: https://bit.ly/3xYzAb",
+      "desc": "英文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "Hey, are we still on for lunch today? How about that ramen place at 12?",
+      "desc": "英文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "您的银行账户安全系数较低，建议将资金转入安全账户",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【抖音】您的账号涉嫌违规，将在24小时封禁，申诉 http://douyin-verify.com",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "Your appointment with Dr. Sarah Johnson is scheduled for Jan 15 at 2:30 PM.",
+      "desc": "英文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "Your subscription to Adobe Creative Cloud has been renewed. Receipt attached.",
+      "desc": "英文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "Your package from IKEA is out for delivery. Estimated 2-4 PM.",
+      "desc": "英文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "【中国天气】明日杭州：多云转晴，18~28°C，适宜出行",
+      "desc": "中文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "【京东】您购买的华为Mate60已发货，快递单号JD1234567890",
+      "desc": "中文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "【知乎】今日推荐：机器学习入门指南。查看详情 https://zhihu.com/question/123",
+      "desc": "中文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "【12306】您的车票存在异常问题，请点击 http://12306-ticket.cc 处理",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "Thank you for your purchase! Your order #ORD-12345 has been confirmed.",
+      "desc": "英文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "【BOSS直聘】您投递的字节跳动后端开发职位被查看，期待进一步沟通",
+      "desc": "中文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "您好，这里是XX市公安局，您涉嫌洗钱犯罪，请配合调查",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【医保局】您的医保卡被停用，医保补贴申领 http://ybj-refund.com",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "IRS: You are eligible for tax refund of $1,240. Submit: https://irs-refund-claim.com",
+      "desc": "英文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【滴滴出行】您乘坐的川A·12345已到达目的地，费用28.50元",
+      "desc": "中文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "We detected unusual sign-in on your Apple ID. Review: https://apple-id-verify.com/restore",
+      "desc": "英文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "验证码：847291，您正在登录账号，10分钟内有效。请勿泄露给他人",
+      "desc": "中文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "【社保中心】您的社保卡被暂停使用，请点击 http://sbj-verify.top 重新激活",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "Your password was successfully changed. If this wasn't you, please contact support immediately.",
+      "desc": "英文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "我是你领导，明天来我办公室一趟，顺便帮我转笔账",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "Congratulations! You've won a $2000 Amazon gift card. Claim here: http://tinyurl.com/amz-gift",
+      "desc": "英文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "Your verification code is 382917. It expires in 10 minutes. Do not share this code.",
+      "desc": "英文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "你的家人出事了，赶紧转钱到这个账户救急",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "Your Microsoft account was used from unknown location. Secure: https://microsoft-alert.net",
+      "desc": "英文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【小米商城】恭喜您获得小米14Pro免单资格！点击 http://mi-free.top 领取",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【顺丰速运】您的快递单号SF1234567890已由前台签收，感谢使用顺丰",
+      "desc": "中文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "Your package with UPS cannot be delivered. Update delivery address: https://ups-redeliver.com",
+      "desc": "英文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【教育部】您获得奖学金补贴2680元，申领 http://edu-subsidy.com",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "Your Netflix account has been suspended. Update payment: https://netflix-billing.cc",
+      "desc": "英文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【腾讯科技】您的微信账号被他人登录，紧急冻结请点击 http://wechat-safe.net",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【微博】您关注的爱豆发布了新动态，快来看看吧",
+      "desc": "中文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "URGENT: Your PayPal account is limited. Please confirm your identity: https://paypal-security.net/verify",
+      "desc": "英文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【顺丰速运】您的快递被海关扣留，需支付清关费用，处理链接 http://sf-delivery.cc",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "Flight BA284 from LHR to JFK is on time. Gate 23. Boarding starts at 14:45.",
+      "desc": "英文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "搞对象不，我这里有优质单身资源，先交会员费即可匹配",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【美团外卖】您的订单已送达，祝您用餐愉快！评价订单可获5元红包",
+      "desc": "中文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "Reminder: Team standup tomorrow at 9 AM in Conference Room B.",
+      "desc": "英文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "【中国移动】您本月剩余流量：5.8GB，通话：120分钟。回复 CXLL 查询明细",
+      "desc": "中文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "【网易云音乐】您的年度听歌报告已生成，查看你的2025音乐回忆",
+      "desc": "中文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "【工商银行】您尾号6789的储蓄卡消费人民币35.00元，余额5234.56元",
+      "desc": "中文正常",
+      "expected": "legitimate"
+    },
+    {
+      "text": "【淘宝】您购买的商品质量问题，退款请点击 http://taobao-after-sale.xyz",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【携程旅行】您预订的航班取消，退改签请点击 http://ctrip-refund.cc",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【工商银行】您的账户存在异常，将在24小时内冻结，请登录 https://icbc-secure.net 验证",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "恭喜中奖！您获得一等奖88万元，需先缴纳保证金和税费",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【中国联通】您的积分即将过期，兑换好礼 http://10010-points.top",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【菜鸟驿站】您有一个包裹因地址不详无法派送，请点击 http://cainiao-redirect.com 填写",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【浦发银行】您的贷款审批通过，额度50万，立即提现 http://spdb-loan.com",
+      "desc": "中文钓鱼",
+      "expected": "phishing"
+    },
+    {
+      "text": "【快手】您的作品获得了150个点赞和23条评论，快来互动",
+      "desc": "中文正常",
+      "expected": "legitimate"
+    }
+  ]
+}
