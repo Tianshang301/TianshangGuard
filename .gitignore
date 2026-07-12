@@ -31,6 +31,16 @@ scripts/chifraud_data/
 
 # Temporary analysis scripts
 scripts/tmp_*.py
+scripts/temp_*.py
+scripts/temp_fix_*.py
+scripts/_*.py
+scripts/check_epoch.py
+scripts/compare_url_models.py
+scripts/eval_*.py
+scripts/fix_*.py
+scripts/manual_*.py
+scripts/re_export*.py
+scripts/spot_check*.py
 
 # LaTeX build artifacts
 docs/*.aux
@@ -68,6 +78,7 @@ hs_err_pid*.log
 replay_pid*.log
 
 # Keystore (DO NOT COMMIT)
+release.jks
 app/release.jks
 keystore.properties
 
