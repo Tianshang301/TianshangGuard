@@ -97,7 +97,10 @@ jobs:
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: |
-          mkdir -p app && echo "$KEYSTORE_B64" | base64 -d > app/release.jks 2>/dev/null || true
+          mkdir -p app
+          printf '%s' "$KEYSTORE_B64" > /tmp/keystore.b64
+          base64 -d /tmp/keystore.b64 > app/release.jks
+          rm -f /tmp/keystore.b64
       - name: Build ${{ matrix.flavor }} Release
         run: |
           printf '\norg.gradle.jvmargs=-Xmx4g\n' >> gradle.properties
