@@ -78,10 +78,14 @@ jobs:
           path: app/build/reports/lint-results*
 
   build:
-    name: Build Release
+    name: Build ${{ matrix.flavor }} Release
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref_name == 'main'
     needs: [unit-test, lint]
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: [zh, en, unified]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -89,18 +93,16 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v3
-      - name: Tune Gradle memory
-        run: |
-          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx5g -Dfile.encoding=UTF-8/' gradle.properties
-          echo "org.gradle.parallel=false" >> gradle.properties
       - name: Decode keystore
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: |
           mkdir -p app && echo "$KEYSTORE_B64" | base64 -d > app/release.jks 2>/dev/null || true
-      - name: Build all flavors
-        run: ./gradlew assembleZhRelease assembleEnRelease assembleUnifiedRelease --no-daemon --max-workers=1
+      - name: Build ${{ matrix.flavor }} Release
+        run: |
+          printf '\norg.gradle.jvmargs=-Xmx4g\n' >> gradle.properties
+          ./gradlew assemble${{ matrix.flavor }}Release --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: release-apks
-          path: app/build/outputs/apk/*/release/*.apk
+          name: app-${{ matrix.flavor }}-release
+          path: app/build/outputs/apk/${{ matrix.flavor }}/release/app-${{ matrix.flavor }}-release.apk
