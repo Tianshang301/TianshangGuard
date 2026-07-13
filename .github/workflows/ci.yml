@@ -97,10 +97,24 @@ jobs:
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: |
-          mkdir -p app
-          printf '%s' "$KEYSTORE_B64" > /tmp/keystore.b64
-          base64 -d /tmp/keystore.b64 > app/release.jks
-          rm -f /tmp/keystore.b64
+          python3 -c "
+import base64, os
+b64 = os.environ.get('KEYSTORE_B64', '')
+data = base64.b64decode(b64)
+with open('app/release.jks', 'wb') as f:
+    f.write(data)
+print(f'Decoded {len(data)} bytes')
+"
+      - name: Generate keystore.properties
+        env:
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+        run: |
+          cat > keystore.properties << EOF
+          storePassword=$KEYSTORE_PASS
+          keyPassword=$KEYSTORE_PASS
+          keyAlias=guard
+          storeFile=release.jks
+          EOF
       - name: Build ${{ matrix.flavor }} Release
         run: |
           printf '\norg.gradle.jvmargs=-Xmx4g\n' >> gradle.properties
