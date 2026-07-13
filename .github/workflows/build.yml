@@ -27,6 +27,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Increase Gradle heap
+        run: echo "org.gradle.jvmargs=-Xmx4g" >> gradle.properties
+
       - name: Build ${{ matrix.flavor }} Debug
         run: ./gradlew assemble${{ matrix.flavor }}Debug --no-daemon
 
