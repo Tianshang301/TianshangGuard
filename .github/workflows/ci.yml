@@ -89,13 +89,17 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v3
+      - name: Tune Gradle memory
+        run: |
+          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8/' gradle.properties
+          echo "org.gradle.parallel=false" >> gradle.properties
       - name: Decode keystore
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: |
           echo "$KEYSTORE_B64" | base64 -d > release.jks 2>/dev/null || true
       - name: Build all flavors
-        run: ./gradlew assembleZhRelease assembleEnRelease assembleUnifiedRelease --no-daemon
+        run: ./gradlew assembleZhRelease assembleEnRelease assembleUnifiedRelease --no-daemon --max-workers=1
       - uses: actions/upload-artifact@v4
         with:
           name: release-apks

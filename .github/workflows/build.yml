@@ -22,17 +22,19 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Increase Gradle heap
-        run: echo "org.gradle.jvmargs=-Xmx4g" >> gradle.properties
+      - name: Tune Gradle memory
+        run: |
+          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8/' gradle.properties
+          echo "org.gradle.parallel=false" >> gradle.properties
 
       - name: Build Zh Debug
-        run: ./gradlew assembleZhDebug --no-daemon
+        run: ./gradlew assembleZhDebug --no-daemon --max-workers=1
 
       - name: Build En Debug
-        run: ./gradlew assembleEnDebug --no-daemon
+        run: ./gradlew assembleEnDebug --no-daemon --max-workers=1
 
       - name: Build Unified Debug
-        run: ./gradlew assembleUnifiedDebug --no-daemon
+        run: ./gradlew assembleUnifiedDebug --no-daemon --max-workers=1
 
       - name: Upload Zh APK
         uses: actions/upload-artifact@v4
