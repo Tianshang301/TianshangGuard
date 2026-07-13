@@ -8,7 +8,12 @@ on:
 
 jobs:
   build:
+    name: Build ${{ matrix.flavor }} Debug
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: [zh, en, unified]
 
     steps:
       - uses: actions/checkout@v4
@@ -22,26 +27,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Increase Gradle heap
-        run: echo "org.gradle.jvmargs=-Xmx6g" >> gradle.properties
+      - name: Build ${{ matrix.flavor }} Debug
+        run: ./gradlew assemble${{ matrix.flavor }}Debug --no-daemon
 
-      - name: Build all flavors
-        run: ./gradlew assembleZhDebug assembleEnDebug assembleUnifiedDebug --no-daemon
-
-      - name: Upload Zh APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-zh-debug
-          path: app/build/outputs/apk/zh/debug/app-zh-debug.apk
-
-      - name: Upload En APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-en-debug
-          path: app/build/outputs/apk/en/debug/app-en-debug.apk
-
-      - name: Upload Unified APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-unified-debug
-          path: app/build/outputs/apk/unified/debug/app-unified-debug.apk
+          name: app-${{ matrix.flavor }}-debug
+          path: app/build/outputs/apk/${{ matrix.flavor }}/debug/app-${{ matrix.flavor }}-debug.apk
