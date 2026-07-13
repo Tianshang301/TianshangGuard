@@ -91,7 +91,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v3
       - name: Tune Gradle memory
         run: |
-          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8/' gradle.properties
+          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8/' gradle.properties
           echo "org.gradle.parallel=false" >> gradle.properties
       - name: Decode keystore
         env:
