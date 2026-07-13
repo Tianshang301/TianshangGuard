@@ -24,7 +24,7 @@ jobs:
 
       - name: Tune Gradle memory
         run: |
-          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8/' gradle.properties
+          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx5g -Dfile.encoding=UTF-8/' gradle.properties
           echo "org.gradle.parallel=false" >> gradle.properties
 
       - name: Build Zh Debug
