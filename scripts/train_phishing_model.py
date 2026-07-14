@@ -62,14 +62,6 @@ class Config:
             self.batch_size = 128
             self.output_subdir = "english"
             self.onnx_name = "english_phishing.onnx"
-        elif mode == "japanese":
-            self.d_model = 64
-            self.n_heads = 2
-            self.n_layers = 2
-            self.d_ff = 128
-            self.batch_size = 128
-            self.output_subdir = "japanese"
-            self.onnx_name = "japanese_phishing.onnx"
         elif mode == "sms":
             self.d_model = 64
             self.n_heads = 2
@@ -648,8 +640,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Train phishing detection model")
     parser.add_argument("--fresh", action="store_true",
                         help="Ignore existing checkpoint and train from scratch")
-    parser.add_argument("--mode", choices=["url", "url_lstm", "chinese", "english", "japanese", "sms"], default="url",
-                        help="Model mode: url/url_lstm (PhiUSIIL Transformer/LSTM), chinese (ChiFraud+synthetic), english (SMS), japanese (SMS)")
+    parser.add_argument("--mode", choices=["url", "url_lstm", "chinese", "english", "sms"], default="url",
+                        help="Model mode: url/url_lstm (PhiUSIIL Transformer/LSTM), chinese (ChiFraud+synthetic), english (SMS)")
     parser.add_argument("--load-weights", type=str, default=None,
                         help="Load model weights from a .pt file (state_dict) and continue training")
     parser.add_argument("--lr", type=float, default=None,
@@ -963,51 +955,6 @@ def train(fresh=False, mode="url", load_weights=None, lr=None, epochs=None):
         else:
             print(f"ERROR: English SMS dataset not found at {csv_path}")
             print("Run merge_english_sms.py first.")
-            return
-
-    elif mode == "japanese":
-        csv_path = os.path.join(base_path, "sms_spam", "japanese_sms_dataset.csv")
-        if os.path.exists(csv_path):
-            print(f"[Japanese Mode] Loading SMS dataset from {csv_path}...")
-            import pandas as pd
-            df_all = pd.read_csv(csv_path)
-            df_all = df_all.dropna(subset=["text"])
-            df_all["text"] = df_all["text"].astype(str)
-            df_all["label"] = df_all["label"].astype(float)
-
-            # Balance: downsample majority class to match minority
-            phishing = df_all[df_all["label"] == 1.0]
-            legit = df_all[df_all["label"] == 0.0]
-            n = min(len(phishing), len(legit))
-            df_balanced = pd.concat([
-                phishing.sample(n, random_state=42),
-                legit.sample(n, random_state=42)
-            ])
-            df_balanced = df_balanced.sample(frac=1, random_state=42).reset_index(drop=True)
-
-            split_idx = int(len(df_balanced) * 0.9)
-            train_df = df_balanced.iloc[:split_idx]
-            val_df = df_balanced.iloc[split_idx:]
-
-            print(f"  Balanced dataset: {len(df_balanced)} samples ({len(train_df)} train, {len(val_df)} val)")
-
-            class DataFrameDataset(Dataset):
-                def __init__(self, df, max_seq_len):
-                    self.texts = df["text"].tolist()
-                    self.labels = df["label"].astype(float).tolist()
-                    self.max_seq_len = max_seq_len
-                def __len__(self):
-                    return len(self.texts)
-                def __getitem__(self, idx):
-                    tokens = tokenizer.encode(self.texts[idx], self.max_seq_len)
-                    return torch.tensor(tokens, dtype=torch.long), torch.tensor(self.labels[idx], dtype=torch.float)
-
-            train_dataset = DataFrameDataset(train_df, config.max_seq_len)
-            val_dataset = DataFrameDataset(val_df, config.max_seq_len)
-            print(f"  Using Japanese SMS: {len(train_dataset)} train, {len(val_dataset)} val")
-        else:
-            print(f"ERROR: Japanese SMS dataset not found at {csv_path}")
-            print("Run merge_japanese_sms.py first.")
             return
 
     elif mode == "sms":
@@ -1459,23 +1406,6 @@ def test_onnx_inference(onnx_path, mode="url", max_seq_len=512):
             ("Reminder: Your appointment with Dr. Smith is tomorrow at 3pm.", False),
             ("Congratulations on your graduation! So proud of you!", False),
             ("Click here to join the Zoom meeting for today's call.", False),
-        ]
-    elif mode == "japanese":
-        test_texts = [
-            # Phishing (should be phishing)
-            ("【三菱UFJ銀行】お客様の口座に異常なログインを検出しました。本人確認はこちら：https://mufg-secure.net/verify", True),
-            ("【佐川急便】お荷物のお届けに上がりましたがご不在でした。再配達のご依頼はこちら → https://sgwk-xpress.cc/redelivery", True),
-            ("【国税庁】還付金の手続きが未完了です。至急お手続きください：https://nta-refund.go-jp.net/refund", True),
-            ("【Amazon】おめでとうございます！Amazonギフトカード10000円分が当選しました。受取：https://amazon-gift-claim.com", True),
-            ("【NTTドコモ】月額料金の支払いが確認できませんでした。支払い情報を更新：https://docomo-payment.net/update", True),
-            ("【楽天】不正アクセスを検知しました。緊急にパスワード変更をお願いします：https://rakuten-bank.security-update.net", True),
-            # Legitimate (should be safe)
-            ("【楽天】認証コードは123456です。有効期限は10分間です。他人に教えないでください。", False),
-            ("【ヤマト運輸】お荷物の配達時間をご確認ください。配達時間：14:00頃", False),
-            ("【みずほ銀行】ご入金50,000円を確認しました。残高：123,456円", False),
-            ("明日のランチ、12時に駅前で待ち合わせね！", False),
-            ("【東京大学】明日の授業は9:00からです。持ち物を忘れずに。", False),
-            ("【気象庁】東京に大雨警報が発表中です。お出かけの際はご注意ください。", False),
         ]
     elif mode == "sms":
         test_texts = [
