@@ -76,6 +76,9 @@ Open-source Android anti-fraud tool with a layered defense architecture. **All a
 - **Test isolation**: All security tests now use UUID-unique database names to prevent inter-test contamination
 - **26/26 androidTests pass** on real Huawei device (ADY-AL00)
 
+### Technical Report
+- [v1.5.0 SMS Anti-fraud Model Training Report](docs/v1.5.0_report.tex) — LaTeX technical report covering data construction, 30-epoch training, ONNX quantization, threshold calibration (AUC=0.9672, F1=0.9206 at threshold 0.59), and manual test coverage gap analysis
+
 ---
 
 ## Architecture

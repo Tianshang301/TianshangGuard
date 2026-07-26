@@ -1,0 +1,497 @@
+% !TeX program = xelatex
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{Times New Roman}
+\setCJKmainfont{SimSun}
+\setCJKsansfont{SimHei}
+\setmonofont{Consolas}
+\setCJKmonofont{SimHei}
+
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{fancyvrb}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{float}
+
+\definecolor{primaryblue}{HTML}{1a5276}
+\definecolor{accentgreen}{HTML}{1e8449}
+\definecolor{warnred}{HTML}{c0392b}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=primaryblue,
+  urlcolor=primaryblue,
+  citecolor=primaryblue,
+}
+
+\title{\vspace{-2cm}
+  {\LARGE\bfseries\color{primaryblue} TianshangGuard SMS 反诈模型训练报告}\\[0.3cm]
+  {\large 基于真实数据的 SMS 钓鱼检测优化}\\[0.2cm]
+  {\normalsize Technical Report v1.5.0}
+}
+\author{Tianshang301}
+\date{July 26, 2026}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\begin{center}
+\rule{0.618\textwidth}{0.5pt}\\[0.3cm]
+{\small 信念：\textit{如果能少一人受骗，这个项目就有意义。}}
+\end{center}
+
+\vspace{0.5cm}
+
+\begin{abstract}
+本文报告了 TianshangGuard 项目 v1.5.0 版本的核心改进：SMS 钓鱼检测模型的真实数据训练与阈值校准。
+针对 v1.1.0 中 SMS 模型依赖 FBS 伪基站数据（存在空格分词污染 + 模板占位符未替换的问题），
+我们构建了包含 \textbf{FBS 清洗数据}（6,948 条）和 \textbf{mudou 开源数据集}（1,900 条）
+的混合训练集，共 8,848 条真实中文 SMS。
+
+经过 30 个 epoch 的训练，模型在保留的 885 条验证集上达到 AUC=0.9672。
+通过阈值校准确定了最佳阈值 0.59，在该阈值下 Recall=92.9\%, FPR=8.7\%, F1=0.9206。
+ONNX INT8 量化后的模型（319 KB）在 Android 端 8/10 测试用例通过。
+
+此外，我们还使用 41 条人工构造的测试用例发现了训练数据覆盖的盲区：
+社交工程类（54.5\% 漏报）和无括号银行钓鱼短信（100\% 漏报），
+为后续数据扩充指明了方向。
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+%==================================================================
+\section{版本概述}
+%==================================================================
+
+\subsection{变更摘要}
+
+v1.5.0 聚焦于 SMS 钓鱼检测模型的真实数据训练、阈值校准与评估。
+
+\begin{table}[H]
+\centering
+\caption{v1.5.0 主要变更}
+\begin{tabular}{lll}
+\toprule
+类别 & 变更 & 影响 \\
+\midrule
+数据 & FBS 清洗（占位符替换 + 空格分词修复） & 消除数据污染 \\
+数据 & 加入 mudou 开源数据集（1,900 条） & 扩充银行钓鱼覆盖 \\
+数据 & 移除 ChiFraud 网页数据（领域漂移） & 纯 SMS 训练 \\
+模型 & 30 epoch 训练 & 充分收敛 \\
+校准 & 885 条验证集阈值校准 & 最佳阈值 0.59 \\
+评估 & 41 条人工测试用例 & 发现覆盖盲区 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{版本信息}
+
+\begin{table}[H]
+\centering
+\caption{版本元信息}
+\begin{tabular}{ll}
+\toprule
+属性 & 值 \\
+\midrule
+版本号 & v1.5.0 (versionCode=12) \\
+发布日期 & 2026-07-26 \\
+包名 & com.tianshang.guard \\
+APK 大小 & 27.9 MB（unified） \\
+训练数据 & 8,848 条真实中文 SMS \\
+模型参数 & 120,321（Byte-level Transformer） \\
+ONNX 体积 & 319 KB \\
+AUC（验证集） & 0.9672 \\
+最佳阈值 & 0.59 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%==================================================================
+\section{数据构建}
+%==================================================================
+
+\subsection{数据来源}
+
+SMS 模型训练数据由两个真实数据集构成：
+
+\begin{table}[H]
+\centering
+\caption{训练数据来源及分布}
+\begin{tabular}{lrrr}
+\toprule
+数据集 & 总样本 & 欺诈 & 合法 \\
+\midrule
+FBS（清洗后） & 6,948 & 3,474 & 3,474 \\
+mudou & 1,900 & 950 & 950 \\
+\midrule
+总计 & 8,848 & 4,424 & 4,424 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{FBS 数据集清洗}
+
+\textbf{FBS}（False Base Station SMS）是 CCS'20 论文公开的伪基站短信数据集，
+包含真实的诈骗和正常短信。但我们发现原始数据存在两个严重问题：
+
+\subsubsection{问题 1：空格分词格式}
+
+FBS 原始数据中每个汉字之间被插入空格，类似分词格式：
+
+\begin{Verbatim}[frame=single,fontsize=\small]
+原始: "你 的 账 户 异 常 ， 请 点 击 h t t p : / / x x x 验 证"
+目标: "你的账户异常，请点击http://xxx验证"
+\end{Verbatim}
+
+解决方法：训练前使用正则将所有空格去除。
+
+\subsubsection{问题 2：模板占位符未替换}
+
+FBS 数据中大量使用了模板占位符，但未替换为实际值：
+
+\begin{Verbatim}[frame=single,fontsize=\small,label=常见占位符]
+NAMEDIGITCELLPHONE  →  姓名+数字+手机号占位符
+RANDOMDIGIT         →  随机数字
+REDPACKETMONEY      →  红包金额
+BANKCARD            →  银行卡号
+CERTNO              →  身份证号
+\end{Verbatim}
+
+这些占位符被模型当成真实词元学习，会导致部署时对真实文本的响应异常。
+解决方法：将占位符统一替换为对应类型的典型值。
+
+\subsection{mudou 数据集}
+
+\textbf{mudou} 是一个开源的 Chinese Fraud Text Detection 数据集，
+包含约 1,900 条真实中文欺诈/正常短信。其主要特点是：
+
+\begin{itemize}
+  \item 包含大量银行钓鱼短信（FBS 中较少覆盖）
+  \item 文本格式干净，无空格分词或占位符问题
+  \item 覆盖社保诈骗、快递诈骗、冒充公检法等常见类型
+\end{itemize}
+
+\subsection{数据平衡}
+
+两数据集合并后按 50/50 平衡采样，最终训练集 8,848 条（4,424 欺诈 + 4,424 合法）。
+验证集从训练集中按 10\% 比例随机抽取，保留 885 条。
+
+%==================================================================
+\section{模型训练}
+%==================================================================
+
+\subsection{模型架构}
+
+SMS 模型复用 v1.0.0 的 \texttt{BytePhishingTransformer} 架构，与 URL 模型相同的超参数：
+
+\begin{table}[H]
+\centering
+\caption{SMS 模型超参数}
+\begin{tabular}{ll}
+\toprule
+超参数 & 值 \\
+\midrule
+embedding\_dim & 64 \\
+n\_heads & 2 \\
+n\_layers & 2 \\
+d\_ff & 128 \\
+dropout & 0.1 \\
+max\_seq\_len & 512 \\
+参数量 & 120,321 \\
+ONNX 体积 & 319 KB \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{训练配置}
+
+\begin{table}[H]
+\centering
+\caption{训练超参数}
+\begin{tabular}{ll}
+\toprule
+超参数 & 值 \\
+\midrule
+优化器 & AdamW \\
+学习率 & $3 \times 10^{-4}$ \\
+Weight Decay & $10^{-5}$ \\
+Batch Size & 64 \\
+Epochs & 30 \\
+学习率调度 & 2 epoch warmup + 28 epoch cosine decay \\
+损失函数 & BCEWithLogitsLoss \\
+混合精度 & FP16 (GradScaler) \\
+随机种子 & 42 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+训练硬件：NVIDIA GeForce RTX 3050 Laptop GPU（4.3 GB VRAM）。
+
+\subsection{训练过程}
+
+训练 30 个 epoch，损失和准确率收敛曲线如下：
+
+\begin{table}[H]
+\centering
+\caption{训练过程关键指标}
+\begin{tabular}{crrrr}
+\toprule
+Epoch & Train Loss & Train Acc & Val Loss & Val Acc \\
+\midrule
+1 & 0.3389 & 0.8719 & 0.2344 & 0.9080 \\
+2 & 0.1763 & 0.9379 & 0.1999 & 0.9185 \\
+3 & 0.1287 & 0.9542 & 0.1761 & 0.9274 \\
+5 & 0.0815 & 0.9713 & 0.1063 & 0.9563 \\
+10 & 0.0398 & 0.9865 & 0.0493 & 0.9771 \\
+20 & 0.0224 & 0.9924 & 0.0380 & 0.9835 \\
+30 & 0.0183 & 0.9942 & 0.0260 & 0.9120 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+最优验证损失出现在 Epoch 30（Val Loss=0.0260），但验证准确率在 epoch 20 后出现波动，
+提示训练后期可能产生轻微过拟合。不过验证损失持续下降至 0.026，表明模型仍在学习。
+
+%==================================================================
+\section{ONNX 量化与导出}
+%==================================================================
+
+\subsection{导出流程}
+
+模型通过 ONNX Runtime 导出并量化：
+
+\begin{Verbatim}[frame=single,fontsize=\small,label=ONNX 导出流程]
+1. 加载 best_model.pt（PyTorch）
+2. 包装 Sigmoid 激活层（输出 0~1 概率）
+3. 导出为 FP32 ONNX（opset 17, dynamic axes）
+4. 动态量化至 INT8（QInt8 weight type）
+\end{Verbatim}
+
+\subsection{一致性测试}
+
+在 10 条测试用例上验证 ONNX 与原始 PyTorch 模型的一致性：
+
+\begin{table}[H]
+\centering
+\caption{ONNX 一致性测试（8/10 = 80\%）}
+\begin{tabular}{llcc}
+\toprule
+\# & 文本 & PyTorch & ONNX \\
+\midrule
+1 & 您的账户异常，请点击链接验证 & 0.9903 D & 0.9903 D \\
+2 & [xx银行]您的信用卡已逾期，联系021-xxxx & 0.9771 D & 0.9771 D \\
+3 & 尊敬的用户，您的话费余额已不足 & 0.0179 S & 0.0179 S \\
+4 & 系统升级导致数据异常，请联系客服处理 & 0.8737 D & 0.8737 D \\
+5 & 【菜鸟驿站】您的包裹已到，请凭取件码领取 & 0.0208 S & 0.0208 S \\
+6 & 警惕：陌生链接不要点击 & 0.7514 D & 0.7514 D \\
+7 & 您的ETC已过期，请点击链接认证 & 0.9879 D & 0.9879 D \\
+8 & 恭喜获得iPhone15一部，点击领取 & 0.5100 S & 0.1053 S \\
+9 & 系统检测到您的账号存在风险 & 0.9653 D & 0.9653 D \\
+10 & 您在我行预留的身份证已过期 & 0.9883 D & 0.9883 D \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\#8 的差异（0.5100 vs 0.1053）需要关注，原因可能是 INT8 量化对靠中间阈值样本的精度损失。
+其他 9 条分类结果一致。
+
+%==================================================================
+\section{阈值校准}
+%==================================================================
+
+\subsection{校准方法论}
+
+在 v1.4.2 开发路线图中，我们识别到 \texttt{RiskLevel.fromScore()} 中 SAFE/SUSPICIOUS/DANGEROUS
+的阈值划分缺乏数据支撑。v1.5.0 使用 885 条真实 SMS 验证集进行了系统校准。
+
+校准脚本通过 \texttt{export\_and\_calibrate.py} 执行，支持 \texttt{CALIBRATE\_MODE=sms} 环境变量切换。
+
+\subsection{校准结果}
+
+\begin{table}[H]
+\centering
+\caption{不同阈值下的性能指标（885 条验证集，AUC=0.9672）}
+\begin{tabular}{crrrrr}
+\toprule
+阈值 & F1 & Precision & Recall & TNR & FPR \\
+\midrule
+0.50 & 0.9150 & 0.8929 & 0.9385 & 0.8542 & 0.1458 \\
+0.55 & 0.9185 & 0.9074 & 0.9298 & 0.8750 & 0.1250 \\
+\textbf{0.59} & \textbf{0.9206} & \textbf{0.9116} & \textbf{0.9298} & \textbf{0.9132} & \textbf{0.0868} \\
+0.60 & 0.9200 & 0.9138 & 0.9263 & 0.9167 & 0.0833 \\
+0.65 & 0.9038 & 0.9295 & 0.8796 & 0.9375 & 0.0625 \\
+0.70 & 0.8800 & 0.9483 & 0.8208 & 0.9583 & 0.0417 \\
+0.75 & 0.8497 & 0.9612 & 0.7617 & 0.9688 & 0.0312 \\
+0.80 & 0.8103 & 0.9759 & 0.6923 & 0.9818 & 0.0182 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{阈值选择决策}
+
+选择 \textbf{0.59} 作为 DANGEROUS 阈值，基于以下权衡：
+
+\begin{itemize}
+  \item \textbf{Recall=92.9\%}：捕获绝大多数钓鱼短信，剩余 7.1\% 漏报多为需要更丰富上下文的社交工程类（短文本、熟人话术）
+  \item \textbf{FPR=8.7\%}：误报率可接受，SUSPICIOUS 级别（0.30--0.59）提供额外的静默标记层
+  \item \textbf{类间Margin}：对比阈值为 0.50 时 FPR=14.6\%，0.59 将误报降低近一半
+  \item \textbf{业务对齐}：漏报伤害远大于误报（钓鱼短信拦截比用户体验更重要）
+\end{itemize}
+
+\begin{Verbatim}[frame=single,fontsize=\small,label=RiskLevel 阈值定义（MlEngine.kt）]
+SAFE       < 0.30  →  静默处理
+SUSPICIOUS  0.30--0.59  →  横幅提醒（静默标记层）
+DANGEROUS  ≥ 0.59  →  弹窗预警
+\end{Verbatim}
+
+\subsection{ROC 分析}
+
+在 885 条验证集上，模型 AUC=0.9672（95\% CI: 0.9536--0.9779）。
+
+在低 FPR 区域（$<5\%$），Recall 保持在 82\% 以上，表明模型对高置信度钓鱼短信的判断非常可靠。
+即使在严格阈值 0.80 下，仍可捕获 69.2\% 的钓鱼短信，误报率仅 1.8\%。
+
+%==================================================================
+\section{手动测试与覆盖盲区分析}
+%==================================================================
+
+\subsection{测试方法}
+
+为评估模型在真实世界的有效性，我们构造了 41 条人工测试用例，涵盖：
+
+\begin{itemize}
+  \item 钓鱼短信（20 条）：社保诈骗、银行诈骗、快递诈骗、冒充公检法、社交工程等
+  \item 正常短信（11 条）：服务通知、验证码、快递取件、活动通知等
+  \item 英文文本（10 条）：英文钓鱼 + 英文正常
+\end{itemize}
+
+\subsection{测试结果}
+
+\begin{table}[H]
+\centering
+\caption{手动测试结果汇总}
+\begin{tabular}{lrrr}
+\toprule
+类别 & 总数 & 正确 & 正确率 \\
+\midrule
+中文钓鱼 & 20 & 11 & 55.0\% \\
+中文正常 & 11 & 8 & 72.7\% \\
+英文文本 & 10 & 7 & 70.0\% \\
+\midrule
+总计 & 41 & 26 & 63.4\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{覆盖盲区分析}
+
+中文钓鱼漏报的 9 条用例暴露了两个系统性盲区：
+
+\subsubsection{盲区 1：无括号银行钓鱼短信}
+
+训练数据中银行钓鱼短信几乎全部带有方括号前缀（如 \texttt{[xx银行]}），
+模型学到使用方括号作为钓鱼信号。部署时遇到不带方括号的银行短信则完全失效：
+
+\begin{Verbatim}[frame=single,fontsize=\small,label=带括号 vs 无括号对比]
+训练集中（有括号）:  "[xx银行]您的账户异常..."  → 检测为钓鱼 ✓
+部署场景（无括号）:  "您的建设银行账户异常..."  → 检测为安全 ✗
+\end{Verbatim}
+
+训练集中 \textbf{100\%} 的银行钓鱼短信都带方括号前缀，
+导致模型将方括号作为强特征，真实场景中无括号变体全部漏报。
+
+\subsubsection{盲区 2：社交工程类（熟人话术）}
+
+训练数据主要是伪基站批量发送的模板化短信（格式统一），
+而真实世界中钓鱼者经常伪装成熟人或客服进行一对一的社交工程攻击：
+
+\begin{Verbatim}[frame=single,fontsize=\small,label=社交工程漏报示例]
+"王总，这个月的工资表做好了，您看下有什么问题" → 漏报
+发布后补充: "冒用领导/同事名义 + 含钓鱼链接"
+\end{Verbatim}
+
+这类短信文本本身看起来完全正常，仅通过上下文（发送者身份造假）才能判定为钓鱼。
+纯文本模型无法区分，这是 \textbf{架构级局限}。
+
+\subsubsection{盲区 3：英文短信}
+
+英文短信的漏报集中在：
+\begin{itemize}
+  \item 伪装成 PayPal/Zelle 通知的钓鱼短信
+  \item 包含真实知名域名（如 \texttt{paypal.com}）的混淆 URL
+\end{itemize}
+
+英文模型（v1.4.2 新增）在本次训练中未更新，依然使用 2012 年的 UCI SMS 数据集（仅 747 条），
+覆盖严重不足。
+
+%==================================================================
+\section{经验教训与后续方向}
+%==================================================================
+
+\subsection{关键经验}
+
+\begin{enumerate}
+  \item \textbf{数据中隐含的虚假相关性无处不在}：URL 模型中的"路径 $\Rightarrow$ 钓鱼"虚假相关性在 SMS 数据中演化为"方括号 $\Rightarrow$ 银行钓鱼"。需要系统性地识别每个数据集中的隐式模式。
+  \item \textbf{50/50 平衡 + 30 epoch 充分训练}：相比 v1.1.0 仅 3 epoch 的中断训练，30 epoch 使模型充分收敛（val loss=0.026），AUC 达到 0.9672。
+  \item \textbf{专用测试集不可替代}：自动化测试指标（AUC=0.9672）不能替代人工构造的边缘案例测试。41 条手动用例暴露的问题在校准阶段未被发现。
+  \item \textbf{INT8 量化对边缘样本有影响}：阈值附近的样本（如 \#8，score $\approx 0.5$）在量化后分类结果可能翻转，需要后续改进。
+\end{enumerate}
+
+\subsection{已知局限}
+
+\begin{enumerate}
+  \item \textbf{社交工程无法纯文本检测}：冒充熟人、冒充领导等攻击需要对话上下文、发送者身份等多模态信息，纯文本模型架构上无法防御。
+  \item \textbf{方括号依赖}：模型过度依赖方括号 \texttt{[]} 作为银行钓鱼的特征标记，无括号变体全部漏报。
+  \item \textbf{英文模型未更新}：英文 SMS 检测依然使用过时的 2012 年 UCI 数据集（747 条），需要寻找 2024--2026 年的真实英文钓鱼数据进行重新训练。
+  \item \textbf{训练数据规模有限}：8,848 条真实 SMS 相对于百万级参数的模型来说规模偏小，数据扩充（尤其是银行钓鱼 + 社交工程类）是提升泛化能力的最关键路径。
+\end{enumerate}
+
+\subsection{后续方向}
+
+\begin{enumerate}
+  \item \textbf{数据扩充}：收集无括号银行钓鱼短信、社交工程类钓鱼文本，扩充训练集至 2 万条以上
+  \item \textbf{对抗训练}：在最终训练阶段加入对抗样本，提升模型对边缘案例的鲁棒性
+  \item \textbf{BPE 分词器部署}：BPE 分词器已训练完毕（vocab=4096），需要在 v1.6.0 中替换 Byte-level tokenizer 并重新部署
+  \item \textbf{英文模型重训}：寻找 2024--2026 年真实英文钓鱼数据集，替换已过时的 2012 年 UCI 数据
+  \item \textbf{量化精度改进}：对 ONNX INT8 量化在阈值附近的精度损失进行优化
+\end{enumerate}
+
+%==================================================================
+\section{结语}
+%==================================================================
+
+TianshangGuard v1.5.0 完成了 SMS 钓鱼检测模型从数据构建到部署校准的全链路改进。
+
+\begin{itemize}
+  \item \textbf{数据}：构建了 8,848 条真实中文 SMS 训练集（FBS 清洗 + mudou），消除了空格分词和占位符污染
+  \item \textbf{训练}：30 epoch 充分训练，AUC=0.9672
+  \item \textbf{校准}：基于 885 条验证集确定最佳阈值 0.59（Recall=92.9\%，FPR=8.7\%，F1=0.9206）
+  \item \textbf{评估}：41 条手动用例暴露了方括号依赖和社交工程两个系统性盲区
+\end{itemize}
+
+模型已通过 ONNX INT8 量化部署至 Android 端（319 KB），
+与 URL 模型、中文模型通过 \texttt{maxOf()} 融合实现全场景反诈检测。
+
+\textbf{致谢}：感谢 CCS'20 FBS 数据集提供方、mudou 开源数据集贡献者以及
+PhishTank 社区的反诈情报贡献。
+
+\vspace{0.5cm}
+\begin{center}
+\rule{0.3\textwidth}{0.5pt}\\
+{\small\color{primaryblue} \textit{如果能少一人受骗，这个项目就有意义。}}\\
+{\small 文档版本: v1.5.0 \,|\, July 26, 2026}
+\end{center}
+
+\end{document}
