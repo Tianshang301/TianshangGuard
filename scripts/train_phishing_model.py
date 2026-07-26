@@ -797,6 +797,41 @@ WELL_KNOWN_LEGIT = [
     ("https://tailwindcss.com", "/docs/responsive-design", "Tailwind responsive"),
     ("https://tailwindcss.com", "/docs/dark-mode", "Tailwind dark mode"),
     ("https://tailwindcss.com", "/docs/font-size", "Tailwind font size"),
+    # Adversarial: legit domains with phishing-like paths (break spurious correlation)
+    ("https://github.com", "/login", "GitHub login"),
+    ("https://github.com", "/sessions/verify", "GitHub verify"),
+    ("https://github.com", "/account/security", "GitHub security settings"),
+    ("https://github.com", "/reset-password", "GitHub password reset"),
+    ("https://github.com", "/2fa/verify", "GitHub 2FA"),
+    ("https://stackoverflow.com", "/login", "Stack Overflow login"),
+    ("https://stackoverflow.com", "/users/login/verify", "SO verify"),
+    ("https://stackoverflow.com", "/auth/authenticate", "SO auth"),
+    ("https://www.google.com", "/accounts/Login", "Google login"),
+    ("https://accounts.google.com", "/ServiceLogin", "Google account login"),
+    ("https://accounts.google.com", "/signin/v2/identifier", "Google signin"),
+    ("https://mail.google.com", "/mail/verify", "Gmail verify"),
+    ("https://drive.google.com", "/drive/verify-account", "Drive verify"),
+    ("https://www.microsoft.com", "/login", "Microsoft login"),
+    ("https://login.microsoftonline.com", "/common/oauth2/v2.0/authorize", "MS OAuth"),
+    ("https://www.apple.com", "/support/verify", "Apple verify"),
+    ("https://iforgot.apple.com", "/password/verify", "Apple forgot password"),
+    ("https://www.amazon.com", "/gp/css/homepage.html/ref=ya_d_l_ya", "Amazon account"),
+    ("https://www.amazon.com", "/ap/signin", "Amazon signin"),
+    ("https://www.paypal.com", "/signin", "PayPal login"),
+    ("https://www.paypal.com", "/myaccount/transfer", "PayPal transfer"),
+    ("https://www.paypal.com", "/webapps/account-verify", "PayPal verify"),
+    ("https://www.cloudflare.com", "/login", "Cloudflare login"),
+    ("https://dash.cloudflare.com", "/verify", "Cloudflare verify"),
+    ("https://www.baidu.com", "/s?wd=login&verify=1", "Baidu login search"),
+    ("https://www.zhihu.com", "/signin", "Zhihu login"),
+    ("https://www.zhihu.com", "/account/security", "Zhihu security"),
+    ("https://www.bilibili.com", "/account/verify", "Bilibili verify"),
+    ("https://www.taobao.com", "/login", "Taobao login"),
+    ("https://www.taobao.com", "/security/check", "Taobao security"),
+    ("https://www.jd.com", "/user/login", "JD login"),
+    ("https://passport.jd.com", "/new/login.aspx", "JD passport login"),
+    ("https://www.alipay.com", "/signin", "Alipay login"),
+    ("https://www.alipay.com", "/security/risk-detection", "Alipay security"),
     ("https://tailwindcss.com", "/docs/flex", "Tailwind flex"),
     ("https://tailwindcss.com", "/docs/grid", "Tailwind grid"),
     ("https://tailwindcss.com", "/docs/customizing-colors", "Tailwind colors"),
@@ -856,7 +891,7 @@ def augment_url_texts(texts, labels):
     # 2. Add well-known legitimate domains (generalization booster)
     for domain, path, title in WELL_KNOWN_LEGIT:
         # Higher replication for doc-site domains that had false positives
-        if any(d in domain for d in ["git-scm.com", "react.dev", "tailwindcss.com", "numpy.org"]):
+        if any(d in domain for d in ["github.com", "git-scm.com", "react.dev", "tailwindcss.com", "numpy.org", "stackoverflow.com", "wikipedia.org"]):
             repeat = 30
         else:
             repeat = 3
@@ -958,11 +993,26 @@ def train(fresh=False, mode="url", load_weights=None, lr=None, epochs=None):
             return
 
     elif mode == "sms":
-        print("[SMS Mode] Loading Chinese SMS training dataset (FBS replaced)...")
-        csv_path = os.path.join(base_path, "chinese_sms_training.csv")
+        print("[SMS Mode] Loading Chinese SMS training dataset...")
+        # Prefer v5 (100% real data), then v4 (FBS+Synth, no ChiFraud), etc.
+        csv_path_v5 = os.path.join(base_path, "chinese_sms_training_v5.csv")
+        csv_path_v4 = os.path.join(base_path, "chinese_sms_training_v4.csv")
+        csv_path_v3 = os.path.join(base_path, "chinese_sms_training_v3.csv")
+        csv_path_v2 = os.path.join(base_path, "chinese_sms_training_v2.csv")
+        csv_path_v1 = os.path.join(base_path, "chinese_sms_training.csv")
+        csv_path = csv_path_v5 if os.path.exists(csv_path_v5) else (
+            csv_path_v4 if os.path.exists(csv_path_v4) else (
+                csv_path_v3 if os.path.exists(csv_path_v3) else (
+                    csv_path_v2 if os.path.exists(csv_path_v2) else csv_path_v1)))
         if not os.path.exists(csv_path):
-            print(f"ERROR: {csv_path} not found. Run build_chinese_sms_dataset.py first.")
+            print(f"ERROR: SMS training data not found. Run build_real_sms_dataset.py first.")
             return
+
+        version = "v5" if csv_path.endswith("_v5.csv") else (
+            "v4" if csv_path.endswith("_v4.csv") else (
+                "v3" if csv_path.endswith("_v3.csv") else (
+                    "v2" if csv_path.endswith("_v2.csv") else "v1")))
+        print(f"  Using {version}: {csv_path}")
 
         import pandas as pd
         df = pd.read_csv(csv_path, encoding="utf-8")
@@ -985,17 +1035,23 @@ def train(fresh=False, mode="url", load_weights=None, lr=None, epochs=None):
         split_idx = int(len(texts) * 0.9)
 
         class DataFrameDataset(Dataset):
-            def __init__(self, texts, labels, max_seq_len):
+            def __init__(self, texts, labels, max_seq_len, augment=False):
                 self.texts = list(texts)
                 self.labels = list(labels)
                 self.max_seq_len = max_seq_len
+                self.augment = augment
             def __len__(self):
                 return len(self.texts)
             def __getitem__(self, idx):
-                tokens = tokenizer.encode(self.texts[idx], self.max_seq_len)
+                text = self.texts[idx]
+                if self.augment and len(text) > 30:
+                    target_len = random.randint(30, min(60, len(text)))
+                    start = random.randint(0, max(0, len(text) - target_len))
+                    text = text[start:start + target_len]
+                tokens = tokenizer.encode(text, self.max_seq_len)
                 return torch.tensor(tokens, dtype=torch.long), torch.tensor(self.labels[idx], dtype=torch.float)
 
-        train_dataset = DataFrameDataset(texts[:split_idx], labels[:split_idx], config.max_seq_len)
+        train_dataset = DataFrameDataset(texts[:split_idx], labels[:split_idx], config.max_seq_len, augment=True)
         val_dataset = DataFrameDataset(texts[split_idx:], labels[split_idx:], config.max_seq_len)
         print(f"  Train: {len(train_dataset)}, Val: {len(val_dataset)}, Total: {len(texts)} (fraud={n})")
 
@@ -1077,7 +1133,7 @@ def train(fresh=False, mode="url", load_weights=None, lr=None, epochs=None):
             # Mix ChiFraud with SMS synthetic data
             chi_fraud_texts = df_train[df_train["label"] == 1.0]["text"].tolist()
             chi_legit_texts = df_train[df_train["label"] == 0.0]["text"].tolist()
-            all_phish = chi_fraud_texts + fbs_texts + syn_phish
+            all_phish = chi_fraud_texts + syn_phish
             all_legit = chi_legit_texts + syn_legit
             n = min(len(all_phish), len(all_legit))
             rng = random.Random(42)
@@ -1089,7 +1145,7 @@ def train(fresh=False, mode="url", load_weights=None, lr=None, epochs=None):
             rng.shuffle(combined)
             texts, labels = zip(*combined)
             print(f"  Training: {len(texts)} samples (fraud={n}, legit={n}, balanced 50/50)")
-            print(f"    ChiFraud phish: {len(chi_fraud_texts)}, FBS: {len(fbs_texts)}, Synth: {len(syn_phish)}")
+            print(f"    ChiFraud phish: {len(chi_fraud_texts)}, Synth: {len(syn_phish)}")
 
             # Load validation: ChiFraud_t2023
             print(f"  Loading validation from {val_csv_path}...")
@@ -1158,7 +1214,7 @@ def train(fresh=False, mode="url", load_weights=None, lr=None, epochs=None):
         model.parameters(), lr=config.lr,
         weight_decay=config.weight_decay
     )
-    if mode == "chinese":
+    if mode in ("chinese", "sms"):
         criterion = FocalLoss(alpha=0.75, gamma=2.0)
         print(f"  Using FocalLoss(alpha=0.75, gamma=2.0)")
     else:
@@ -1312,6 +1368,61 @@ def train(fresh=False, mode="url", load_weights=None, lr=None, epochs=None):
     # Save final model
     torch.save(model.state_dict(), os.path.join(config.output_dir, "final_model.pt"))
     print("Training complete!")
+
+    # ── Threshold calibration ──────────────────────────────────
+    if mode in ("chinese", "sms"):
+        print("\nCalibrating decision threshold on validation set...")
+        model.eval()
+        all_scores = []
+        all_labels = []
+        with torch.no_grad():
+            for tokens, labels in val_loader:
+                tokens, labels = tokens.to(device), labels.to(device)
+                with autocast(device_type=device.type, enabled=(device.type == "cuda")):
+                    outputs = model(tokens)
+                scores = torch.sigmoid(outputs)
+                all_scores.extend(scores.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
+        best_f1 = 0
+        best_th = 0.5
+        for th in np.arange(0.05, 0.95, 0.05):
+            preds = (np.array(all_scores) > th).astype(float)
+            tp = ((preds == 1) & (np.array(all_labels) == 1)).sum()
+            fp = ((preds == 1) & (np.array(all_labels) == 0)).sum()
+            fn = ((preds == 0) & (np.array(all_labels) == 1)).sum()
+            prec = tp / max(tp + fp, 1)
+            rec = tp / max(tp + fn, 1)
+            f1 = 2 * prec * rec / max(prec + rec, 1e-8)
+            if f1 > best_f1:
+                best_f1 = f1
+                best_th = th
+        print(f"  Best threshold: {best_th:.2f} (val F1={best_f1:.4f})")
+        config.best_threshold = best_th
+        # Also test on SMS test set if available
+        if sms_test_texts:
+            best_f1_test = 0
+            best_th_test = 0.5
+            for th in np.arange(0.05, 0.95, 0.05):
+                preds = []
+                for i in range(0, len(sms_test_texts), config.batch_size):
+                    batch = sms_test_texts[i:i+config.batch_size]
+                    t = np.array([tokenizer.encode(t, config.max_seq_len) for t in batch])
+                    bt = torch.tensor(t, dtype=torch.long, device=device)
+                    with torch.no_grad():
+                        out = model(bt)
+                    scores = torch.sigmoid(out).cpu().numpy()
+                    preds.extend((scores > th).astype(float).flatten().tolist())
+                tp = ((np.array(preds) == 1) & (np.array(sms_test_labels) == 1)).sum()
+                fp = ((np.array(preds) == 1) & (np.array(sms_test_labels) == 0)).sum()
+                fn = ((np.array(preds) == 0) & (np.array(sms_test_labels) == 1)).sum()
+                prec = tp / max(tp + fp, 1)
+                rec = tp / max(tp + fn, 1)
+                f1 = 2 * prec * rec / max(prec + rec, 1e-8)
+                if f1 > best_f1_test:
+                    best_f1_test = f1
+                    best_th_test = th
+            print(f"  Best threshold on SMS test: {best_th_test:.2f} (F1={best_f1_test:.4f})")
+
     return model, config
 
 # ── ONNX Export + INT8 Quantization ───────────────────────

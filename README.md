@@ -56,6 +56,12 @@ Open-source Android anti-fraud tool with a layered defense architecture. **All a
 - **SID (Space ID)**: Detects `.bnb`, `.arb` domains on BNB Chain and Arbitrum
 - **Pure rule-based**: Zero ML dependency, lightweight detection
 
+### SMS Model v5 — 100% Real Data Training
+- **v5 dataset**: 8,848 real Chinese SMS samples — FBS scam SMS (4,943) + mudou_spam (6,899) for phishing, mudou_ham (4,424) for legitimate
+- **30-epoch training**: BytePhishingTransformer (120K params), FocalLoss(alpha=0.75, gamma=2.0), batch=64
+- **Calibrated thresholds**: SAFE < 0.30, SUSPICIOUS 0.30–0.59, DANGEROUS ≥ 0.59 (v5 validation: AUC=0.9672, F1=0.9206)
+- **No synthetic data**: Training uses only real FBS + mudou SMS data; no template-generated phishing
+
 ### Security Infrastructure
 - **Database encryption**: SQLCipher v4.5.4 with Android Keystore AES-GCM passphrase protection
 - **Automatic migration**: Plaintext databases are transparently migrated to encrypted format on first launch
@@ -145,9 +151,9 @@ flowchart LR
     B -->|OOV Fallback| D[ByteTokenizer<br/>UTF-8 Encoding]
     D --> C
     C --> E{Risk Score}
-    E -->|< 0.50| F[✅ Safe]
-    E -->|0.50 ~ 0.90| G[⚠️ Suspicious]
-    E -->|≥ 0.90| H[🚨 Dangerous]
+    E -->|< 0.30| F[✅ Safe]
+    E -->|0.30 ~ 0.59| G[⚠️ Suspicious]
+    E -->|≥ 0.59| H[🚨 Dangerous]
     C -.->|Timeout/Fail| I[Rule Engine Fallback<br/>JSON Keywords]
     I --> E
 ```
@@ -248,9 +254,9 @@ The project includes BytePhishingTransformer models:
 
 | Model | File | Size | Parameters | Training Data | Performance |
 |-------|------|------|------------|---------------|-------------|
-| URL Detection | url_phishing.onnx | 105 KB | 120,321 | PhiUSIIL (235K URLs) | AUC=0.9942 |
-| SMS Phishing | sms_phishing.onnx | 312 KB | 120,321 | FBS SMS + ChiFraud (11K) | Recall=97.88% |
-| English Text | english_phishing.onnx | 312 KB | 120,321 | UCI + NCSU + IMC25 | TBD |
+| URL Detection | url_phishing.onnx | 319 KB | 120,321 | PhiUSIIL (235K URLs, augmented path-invariant) | AUC=0.9942 |
+| SMS Phishing | sms_phishing.onnx | 319 KB | 120,321 | v5 real SMS: FBS (4,943) + mudou_spam (6,899) for phishing, mudou_ham (4,424) for legitimate | AUC=0.9672 (v5 val), F1=0.9206 |
+| English Text | english_phishing.onnx | 319 KB | 120,321 | UCI + NCSU + IMC25 | TBD |
 | Quantized Detection | phishing_detector_quant.onnx | 1022 KB | 120,321 | PhiUSIIL (INT8 quantized) | TBD |
 
 ### Hyperparameters
@@ -296,18 +302,16 @@ Models are automatically exported as ONNX INT8 quantized and copied to `app/src/
 
 ### Threshold Calibration
 
-After training, calibrate optimal thresholds:
+Calibrated on v5 validation set (885 real SMS samples, AUC=0.9672):
 
 ```bash
-python _calibrate_thresholds.py
+python calibrate_sms_threshold.py
 ```
 
-Current thresholds (deployed):
-- **SAFE**: score < 0.50
-- **SUSPICIOUS**: 0.50 – 0.90
-- **DANGEROUS**: ≥ 0.90
-
-> Note: `RiskLevel.toScore()` maps discrete levels to continuous midpoint values (SAFE→0.25, SUSPICIOUS→0.70, DANGEROUS→0.95) to avoid boundary escalation artifacts.
+Deployed thresholds:
+- **SAFE**: score < 0.30
+- **SUSPICIOUS**: 0.30 – 0.59 (silent flag zone, catches ~99% of phishing with moderate FPR)
+- **DANGEROUS**: ≥ 0.59 (Recall=92.9%, FPR=8.7%, F1=0.9206)
 
 ### Evaluation
 
@@ -519,6 +523,7 @@ Submit suspicious domains to `rules/community/` directory in JSON format:
 - [PhiUSIIL](https://www.kaggle.com/datasets/shashwatwork/phiusiil-phishing-url-dataset) — URL phishing dataset
 - [ChiFraud](https://github.com/xuemingxxx/ChiFraud) — Chinese fraud SMS dataset
 - [FBS SMS](https://www.kaggle.com/datasets/uciml/sms-spam-collection-dataset) — SMS spam collection
+- [mudou_spam](https://huggingface.co/datasets/shaonianruntu/Spam-Message-Classification) — Chinese SMS classification dataset (spam + ham)
 - [ONNX Runtime](https://onnxruntime.ai/) — On-device inference engine
 - [PhishTank](https://www.phishtank.com/) — Phishing domain intelligence
 - [SQLCipher](https://www.zetetic.net/sqlcipher/) — Encrypted database engine

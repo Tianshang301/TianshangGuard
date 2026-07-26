@@ -7,15 +7,14 @@ enum class ModelType {
 }
 
 enum class RiskLevel(val threshold: Float) {
-    SAFE(0.50f),
-    SUSPICIOUS(0.90f),
+    SAFE(0.30f),
+    SUSPICIOUS(0.59f),
     DANGEROUS(1.0f);
 
-    // Convert discrete risk level to continuous score (midpoint of range)
     fun toScore(): Float = when (this) {
-        SAFE -> 0.25f
-        SUSPICIOUS -> 0.70f
-        DANGEROUS -> 0.95f
+        SAFE -> 0.15f
+        SUSPICIOUS -> 0.445f
+        DANGEROUS -> 0.795f
     }
 
     companion object {

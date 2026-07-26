@@ -56,6 +56,12 @@
 - **SID（Space ID）**：检测 `.bnb`、`.arb` 等 BNB Chain 和 Arbitrum 域名
 - **纯规则实现**：零 ML 依赖，轻量检测
 
+### SMS 模型 v5 — 100% 真实数据训练
+- **v5 数据集**：8,848 条真实中文 SMS — FBS 诈骗短信（4,943）+ mudou_spam（6,899）作为钓鱼样本，mudou_ham（4,424）作为合法样本
+- **30 轮训练**：BytePhishingTransformer（120K 参数），FocalLoss(alpha=0.75, gamma=2.0)，batch=64
+- **校准阈值**：SAFE < 0.30，SUSPICIOUS 0.30–0.59，DANGEROUS ≥ 0.59（v5 验证集：AUC=0.9672，F1=0.9206）
+- **无合成数据**：仅使用真实 FBS + mudou SMS 数据训练，无模板生成钓鱼样本
+
 ### 安全基础设施
 - **数据库加密**：SQLCipher v4.5.4 + Android Keystore AES-GCM 密码保护
 - **自动迁移**：首次启动时明文字库透明迁移至加密格式
@@ -145,9 +151,9 @@ flowchart LR
     B -->|OOV 兜底| D[ByteTokenizer<br/>UTF-8 编码]
     D --> C
     C --> E{风险分数}
-    E -->|< 0.50| F[✅ 安全]
-    E -->|0.50 ~ 0.90| G[⚠️ 可疑]
-    E -->|≥ 0.90| H[🚨 危险]
+    E -->|< 0.30| F[✅ 安全]
+    E -->|0.30 ~ 0.59| G[⚠️ 可疑]
+    E -->|≥ 0.59| H[🚨 危险]
     C -.->|超时/失败| I[规则引擎兜底<br/>JSON 关键词]
     I --> E
 ```
@@ -249,7 +255,7 @@ adb install app/build/outputs/apk/zh/release/app-zh-release.apk
 | 模型 | 文件 | 大小 | 参数量 | 训练数据 | 性能 |
 |------|------|------|--------|----------|------|
 | URL 检测 | url_phishing.onnx | 105 KB | 120,321 | PhiUSIIL（23.5 万条） | AUC=0.9942 |
-| SMS 诈骗 | sms_phishing.onnx | 312 KB | 120,321 | FBS SMS + ChiFraud（1.1 万条） | Recall=97.88% |
+| SMS 诈骗 | sms_phishing.onnx | 319 KB | 120,321 | v5 真实 SMS：FBS（4,943）+ mudou_spam（6,899）钓鱼，mudou_ham（4,424）合法 | AUC=0.9672（v5 验证集），F1=0.9206 |
 | 英文文本 | english_phishing.onnx | 312 KB | 120,321 | UCI + NCSU + IMC25 | 待测试 |
 | 量化检测 | phishing_detector_quant.onnx | 1022 KB | 120,321 | PhiUSIIL（INT8 量化） | 待测试 |
 
@@ -296,16 +302,16 @@ python export_and_calibrate.py
 
 ### 阈值校准
 
-训练后校准最优阈值：
+基于 v5 验证集（885 条真实 SMS，AUC=0.9672）校准：
 
 ```bash
-python _calibrate_thresholds.py
+python calibrate_sms_threshold.py
 ```
 
-当前阈值（已部署）：
-- **SAFE**: 分数 < 0.50
-- **SUSPICIOUS**: 0.50 – 0.90
-- **DANGEROUS**: ≥ 0.90
+当前部署阈值：
+- **SAFE**: 分数 < 0.30
+- **SUSPICIOUS**: 0.30 – 0.59（静默标记区，可捕获约 99% 钓鱼，FPR 较高）
+- **DANGEROUS**: ≥ 0.59（Recall=92.9%，FPR=8.7%，F1=0.9206）
 
 > `RiskLevel.toScore()` 将离散等级映射为连续中点值（SAFE→0.25，SUSPICIOUS→0.70，DANGEROUS→0.95），避免边界值升级问题。
 
@@ -374,7 +380,7 @@ TianshangGuard/
 │   ├── distill_sms_model.py       # SMS 模型知识蒸馏
 │   ├── backtranslate_augment.py   # 回译数据增强
 │   ├── build_bm25_index.py        # BM25 索引构建
-│   ├── _calibrate_thresholds.py   # 阈值校准
+│   ├── calibrate_sms_threshold.py # SMS 阈值校准
 │   ├── export_and_calibrate.py    # ONNX 导出 + 校准
 │   └── raw_data/                  # 训练数据集
 └── .github/workflows/
@@ -501,6 +507,7 @@ git push origin feature/your-feature
 - [PhiUSIIL](https://www.kaggle.com/datasets/shashwatwork/phiusiil-phishing-url-dataset) — URL 钓鱼数据集
 - [ChiFraud](https://github.com/xuemingxxx/ChiFraud) — 中文欺诈短信数据集
 - [FBS SMS](https://www.kaggle.com/datasets/uciml/sms-spam-collection-dataset) — SMS 垃圾数据集
+- [mudou_spam](https://huggingface.co/datasets/shaonianruntu/Spam-Message-Classification) — 中文短信分类数据集（垃圾 + 正常）
 - [ONNX Runtime](https://onnxruntime.ai/) — 端侧推理引擎
 - [PhishTank](https://www.phishtank.com/) — 钓鱼域名情报
 - [SQLCipher](https://www.zetetic.net/sqlcipher/) — 数据库加密引擎
