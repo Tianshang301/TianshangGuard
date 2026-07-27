@@ -59,9 +59,6 @@ docs/*.blg
 docs/*.bcf
 docs/*.run.xml
 
-# Generated PDF reports
-docs/*.pdf
-
 # VS Code
 .vscode/
 
@@ -90,8 +87,11 @@ java_pid*.hprof
 *.tmp
 .gitignore.tmp
 
-# Report artifacts
-report/
+# Report artifacts (ignore build temp, allow source + PDF)
+report/*
+!report/*.tex
+!report/*.md
+!report/*.pdf
 
 # Log and error files
 *.err
