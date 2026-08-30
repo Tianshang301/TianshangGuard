@@ -264,14 +264,44 @@ class EncryptedDatabaseProvider(private val context: Context) {
                 oldDb?.rawQuery("PRAGMA wal_checkpoint(FULL)", null)?.use {}
             } catch (_: Exception) {}
             try { oldDb?.close() } catch (_: Exception) {}
-            // Delete old database files (including WAL and SHM)
-            dbFile.delete()
+            // H-04: securely erase the old (plaintext) database files — overwrite
+            // before delete — so the cleartext residue cannot be recovered with
+            // forensic tools after migration.
+            secureErase(dbFile)
             val parent = dbFile.parentFile
             if (parent != null) {
-                File(parent, "${DB_NAME}-wal").delete()
-                File(parent, "${DB_NAME}-shm").delete()
+                secureErase(File(parent, "${DB_NAME}-wal"))
+                secureErase(File(parent, "${DB_NAME}-shm"))
             }
         }
+    }
+
+    /**
+     * H-04: overwrite a file's contents (plus any logical slack) with random
+     * bytes before deleting it, so plaintext cannot be trivially recovered from
+     * the filesystem after migration. Best-effort: failures are logged, and the
+     * file is still removed.
+     */
+    private fun secureErase(file: File) {
+        if (!file.exists()) return
+        try {
+            val random = java.security.SecureRandom()
+            file.outputStream().use { out ->
+                val buf = ByteArray(4096)
+                val size = file.length()
+                var remaining = size
+                while (remaining > 0) {
+                    val chunk = minOf(remaining, buf.size.toLong()).toInt()
+                    random.nextBytes(buf)
+                    out.write(buf, 0, chunk)
+                    remaining -= chunk
+                }
+                out.flush()
+            }
+        } catch (e: Exception) {
+            SecureLog.w("EncryptedDatabaseProvider", "secure erase failed for ${file.name}", e)
+        }
+        try { file.delete() } catch (_: Exception) {}
     }
 
     /**

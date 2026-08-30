@@ -7,15 +7,26 @@
     </base-config>
 
     <domain-config>
-        <domain includeSubdomains="true">raw.githubusercontent.com</domain>
-        <domain includeSubdomains="true">api.github.com</domain>
         <!--
-          H-05: multiple SPKI pins (primary + backup) so a single certificate
-          rotation does not silently break rule downloads (fail-closed: if no
-          pin matches, the connection is refused rather than downgraded).
-          Rotate by adding a new pin BEFORE the old one expires.
+          H-05: multi-SPKI pins, per-host, from the LIVE certificate chain
+          (verified 2026-08-30 against raw.githubusercontent.com / api.github.com;
+          the previously configured github.com public pins did NOT match these
+          subdomains and would have failed every rule download).
+          First pin = current live SPKI; additional pins = documented GitHub
+          public pins retained as rotation backups (pin-set passes if ANY match).
         -->
+        <domain includeSubdomains="true">raw.githubusercontent.com</domain>
         <pin-set expiration="2030-01-01">
+            <pin digest="SHA-256">u5HUV+53eJaqAZQekPBc2vbRb9LvpJzlK8dhGLIPF+o=</pin>
+            <pin digest="SHA-256">k2v657xBsOVe1PQRwWoDp9Fxfi2I4l4GlRnNfCeIDrI=</pin>
+            <pin digest="SHA-256">RRM1dGqnDFsCJXBTHky16vi1obOlCgFFn/yOhI/y+ho=</pin>
+        </pin-set>
+    </domain-config>
+
+    <domain-config>
+        <domain includeSubdomains="true">api.github.com</domain>
+        <pin-set expiration="2030-01-01">
+            <pin digest="SHA-256">cgAMm7z20VINmtPjImmTrEl882gSBr0fIhdLTtHveyY=</pin>
             <pin digest="SHA-256">k2v657xBsOVe1PQRwWoDp9Fxfi2I4l4GlRnNfCeIDrI=</pin>
             <pin digest="SHA-256">RRM1dGqnDFsCJXBTHky16vi1obOlCgFFn/yOhI/y+ho=</pin>
         </pin-set>
