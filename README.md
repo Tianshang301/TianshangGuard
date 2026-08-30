@@ -28,14 +28,14 @@ Open-source Android anti-fraud tool with a layered defense architecture. **All a
 | **QR Code Phishing Guard** | Built-in ZXing QR scanner + CameraX preview + real-time URL risk analysis via DNS engine |
 | **Web3 Domain Detection** | ENS `.eth`, Unstoppable `.crypto`, SID `.bnb` — rule-based detection, no ML dependency |
 | **BPE Subword Tokenizer** | Vocabulary-based tokenizer with ByteTokenizer fallback — better Chinese character handling |
-| **Behavior Monitoring** | Screen sharing + banking app combination detection via UsageStatsManager |
+| **Behavior Monitoring** | Screen sharing + banking app combination detection via UsageStatsManager, process UID verification, and API 34+ MediaProjection signals |
 | **Tiered Alerts** | Silent log → Banner → Dialog confirmation → Full-screen block with cooldown and rate limiting |
 | **Feedback Engine** | User feedback (phishing / false positive) integrated with BM25 retrieval for adaptive detection |
 | **BM25 Knowledge Base** | Pre-computed retrieval index for anti-fraud educational content |
 | **Feature-Based Prediction** | 24-dimensional feature extraction + online prediction with adaptive threshold calibration |
-| **Rule Updates** | Remote blacklist/whitelist sync with SHA-256 integrity verification |
-| **Database Encryption** | SQLCipher + Android Keystore for local data protection |
-| **DNS Privacy** | DNS over HTTPS (DoH) with Cloudflare + certificate pinning + UDP fallback |
+| **Rule Updates** | Remote blacklist/whitelist sync with **Ed25519 signature verification** (replay-protected, canonical payload) |
+| **Database Encryption** | SQLCipher + Android Keystore (StrongBox/TEE), **fail-closed** in-memory fallback, secure migration erase |
+| **DNS Privacy** | DNS over HTTPS (DoH) with Cloudflare + AliDNS endpoints, certificate pinning, **fail-closed (no plaintext fallback)** |
 | **Battery Optimization** | Brand-specific battery/autostart settings (Huawei, Xiaomi, OPPO, vivo, Meizu, Samsung, Honor) |
 | **Multi-language** | Chinese (zh), English (en), Unified (auto-detect) build flavors |
 
@@ -57,15 +57,28 @@ Open-source Android anti-fraud tool with a layered defense architecture. **All a
 - **Pure rule-based**: Zero ML dependency, lightweight detection
 
 ### SMS Model v5 — 100% Real Data Training
-- **v5 dataset**: 8,848 real Chinese SMS samples — FBS scam SMS (4,943) + mudou_spam (6,899) for phishing, mudou_ham (4,424) for legitimate
+- **v5 dataset**: 8,848 real Chinese SMS samples (50/50 balanced) — cleaned FBS (6,948) + mudou_spam + mudou_ham (1,900)
 - **30-epoch training**: BytePhishingTransformer (120K params), FocalLoss(alpha=0.75, gamma=2.0), batch=64
 - **Calibrated thresholds**: SAFE < 0.30, SUSPICIOUS 0.30–0.59, DANGEROUS ≥ 0.59 (v5 validation: AUC=0.9672, F1=0.9206)
 - **No synthetic data**: Training uses only real FBS + mudou SMS data; no template-generated phishing
 
 ### Security Infrastructure
-- **Database encryption**: SQLCipher v4.5.4 with Android Keystore AES-GCM passphrase protection
-- **Automatic migration**: Plaintext databases are transparently migrated to encrypted format on first launch
+- **Database encryption**: SQLCipher v4.5.4 with Android Keystore AES-GCM passphrase (StrongBox/TEE-backed)
+- **Fail-closed encryption**: If the SQLCipher native library is unavailable, data falls back to a volatile **in-memory** store with a UI warning (never plaintext on disk)
+- **Automatic migration**: Plaintext databases are transparently migrated to encrypted format on first launch; old plaintext files are securely overwritten before deletion
+- **Ed25519 rule signing**: Remote rule updates are verified with an embedded public key (canonical payload, timestamp + replay protection)
 - **Security module tests**: 6 androidTests covering encryption, decryption, data persistence, migration, tamper detection
+
+### Security Audit Remediation (2026-08)
+
+A full-source security audit (2026-08-28) identified 20 findings (3 Critical / 7 High / 6 Medium / 4 Low); all are remediated in `main`:
+
+- **C-01** — Keyless SHA-256 rule "signature" → **Ed25519 public-key verification** with canonical payload + replay protection
+- **C-02** — DoH plaintext-UDP downgrade → **fail-closed** (multi-endpoint DoH, SERVFAIL on failure, DNS response question-section validation)
+- **C-03** — SQLCipher silent plaintext fallback → **fail-closed** volatile in-memory DB + UI warning
+- **H-01..H-07** — Per-model ML fallback, VPN bounded concurrency + rate limiting, rule/filter sync, StrongBox/TEE key, multi-SPKI pin set, release R8 minify + lint, CI SHA-pinned actions + least-privilege
+- **M-01..M-06** — Homograph brand-aware detection, Web3 registrable-domain parsing, screen-share UID/MediaProjection signals, SHA-256 feedback hash, training-script hardening (`weights_only`, loopback + token auth), wrapper SHA-256 + backup exclusions
+- **L-01..L-04** — DoH-only keepalive, visit-history retention toggle + 30-day purge, URL normalization fix, dead code removal
 
 ### Bug Fixes & Stability
 - **59 security audit bugs identified**: 26 P0/P1 fixed (12 Critical + 14 High), 33 P2 deferred to v1.6.0
@@ -119,7 +132,7 @@ graph TB
         W[(Room DB<br/>SQLCipher Encrypted)]
         X[ONNX Models<br/>URL + SMS + English]
         Y[BPE Vocabulary<br/>tokenizer/bpe_tokenizer_vocab.json]
-        Z[Remote Rules<br/>GitHub + SHA-256]
+        Z[Remote Rules<br/>GitHub + Ed25519]
     end
 
     A --> H
@@ -245,9 +258,9 @@ adb install app/build/outputs/apk/zh/release/app-zh-release.apk
 
 | Version | Language | Models Included | Status |
 |---------|----------|-----------------|--------|
-| [v1.5.0-chinese](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.5.0-chinese) | Chinese UI | URL + SMS | ✅ Released |
-| [v1.5.0-english](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.5.0-english) | English UI | URL + English | ✅ Released |
-| [v1.5.0-unified](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.5.0-unified) | Auto-detect (language switch in Settings) | URL + SMS + English | ✅ Released |
+| [v1.5.0](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.5.0) | Auto-detect (language switch in Settings) | URL + SMS + Chinese + English | ✅ Released |
+| Build from source (zh) | Chinese UI | URL + SMS | Build with `./gradlew assembleZhRelease` |
+| Build from source (en) | English UI | URL + English | Build with `./gradlew assembleEnRelease` |
 
 ---
 
@@ -258,9 +271,10 @@ The project includes BytePhishingTransformer models:
 | Model | File | Size | Parameters | Training Data | Performance |
 |-------|------|------|------------|---------------|-------------|
 | URL Detection | url_phishing.onnx | 319 KB | 120,321 | PhiUSIIL (235K URLs, augmented path-invariant) | AUC=0.9942 |
-| SMS Phishing | sms_phishing.onnx | 319 KB | 120,321 | v5 real SMS: FBS (4,943) + mudou_spam (6,899) for phishing, mudou_ham (4,424) for legitimate | AUC=0.9672 (v5 val), F1=0.9206 |
+| SMS Phishing | sms_phishing.onnx | 319 KB | 120,321 | v5 real SMS: cleaned FBS (6,948) + mudou (1,900), 50/50 balanced | AUC=0.9672, F1=0.9206 at threshold 0.59 |
+| Chinese Text | chinese_phishing.onnx | 319 KB | 120,321 | ChiFraud (82K cleaned + balanced) | AUC=0.9492 |
 | English Text | english_phishing.onnx | 319 KB | 120,321 | UCI + NCSU + IMC25 | TBD |
-| Quantized Detection | phishing_detector_quant.onnx | 1022 KB | 120,321 | PhiUSIIL (INT8 quantized) | TBD |
+| PhishTector Legacy | phishing_detector_quant.onnx | 1022 KB | 644,865 | ChiFraud (FP32, 645K params, historical) | Historical |
 
 ### Hyperparameters
 
@@ -313,7 +327,7 @@ python calibrate_sms_threshold.py
 
 Deployed thresholds:
 - **SAFE**: score < 0.30
-- **SUSPICIOUS**: 0.30 – 0.59 (silent flag zone, catches ~99% of phishing with moderate FPR)
+- **SUSPICIOUS**: 0.30 – 0.59 (silent flag zone, catches ~92.9% of phishing at 8.7% FPR)
 - **DANGEROUS**: ≥ 0.59 (Recall=92.9%, FPR=8.7%, F1=0.9206)
 
 ### Evaluation
@@ -364,7 +378,7 @@ TianshangGuard/
 │   │   │   ├── ui/                # Compose UI (main, sms, stats, settings, alert, qr, onboarding, theme)
 │   │   │   └── di/                # AppModule (Koin)
 │   │   ├── assets/
-│   │   │   ├── model/             # 4 ONNX model files (+1 auto backup)
+│   │   │   ├── model/             # 5 ONNX model files (+1 auto backup)
 │   │   │   ├── tokenizer/         # bpe_tokenizer_vocab.json
 │   │   │   ├── knowledge_base/    # BM25 pre-computed index (index.bin)
 │   │   │   ├── rules/             # whitelist.json, blacklist.json, keywords_sms.json, keywords_web.json
@@ -396,9 +410,9 @@ TianshangGuard/
 ### Core Commitments
 
 - **On-device analysis**: All inference runs locally via ONNX Runtime with NNAPI hardware acceleration
-- **Database encryption**: SQLCipher + Android Keystore for local data protection
-- **DNS privacy**: DNS over HTTPS (DoH) via Cloudflare, certificate pinning, UDP fallback
-- **Rule integrity**: SHA-256 signature verification for rule updates (unsigned payloads rejected)
+- **Database encryption**: SQLCipher + Android Keystore (StrongBox/TEE), fail-closed in-memory fallback if the native library is unavailable, secure erase of migrated plaintext files
+- **DNS privacy**: DNS over HTTPS (DoH) via Cloudflare + AliDNS, certificate pinning, fail-closed (no plaintext UDP fallback — resolution fails closed with SERVFAIL)
+- **Rule integrity**: **Ed25519 public-key signature verification** for rule updates (canonical payload + timestamp/replay protection; unsigned or tampered updates rejected)
 - **Feedback privacy**: User feedback (phishing / false positive) stored locally only, never uploaded
 - **Feature extraction local**: All 24-dimensional feature analysis runs on-device
 - **Open-source auditable**: Code is fully public, community review welcome
@@ -409,7 +423,7 @@ TianshangGuard/
 | Permission | Purpose |
 |------------|---------|
 | `BIND_VPN_SERVICE` ⚡ | VPN DNS interception — set as `<service android:permission>` attribute |
-| `INTERNET` | DNS over HTTPS, GitHub rules update, PhishTank API |
+| `INTERNET` | DNS over HTTPS, GitHub rules update |
 | `SYSTEM_ALERT_WINDOW` | Overlay warnings for phishing alerts |
 | `PACKAGE_USAGE_STATS` | Screen sharing + banking app detection |
 | `RECEIVE_SMS` + `READ_SMS` | Incoming SMS phishing analysis |
@@ -442,33 +456,33 @@ TianshangGuard/
 
 ## Tests
 
-### Unit Tests (25 files, 168 tests)
+### Unit Tests (23 files, 175 tests)
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
 | `RuleBasedEngineTest` | 8 | Keyword matching logic |
-| `HomographDetectorTest` | 11 | Homograph detection + pinyin confusion |
-| `AdaptiveBloomFilterTest` | — | Bloom filter correctness |
-| `CooldownManagerTest` | — | Alert cooldown logic |
-| `BkTreeTest` | — | BK-tree operations |
-| `DnsPacketHandlerTest` | — | DNS packet parsing |
-| `DohClientTest` | — | DoH client |
-| `BpeTokenizerTest` | — | BPE tokenizer |
-| `ByteTokenizerTest` | — | Byte tokenizer |
-| `OnnxMlEngineTest` | — | ONNX engine |
-| `OnnxMlEngineSpikeTest` | — | ONNX integration |
-| `FeatureExtractorTest` | — | Feature extraction |
-| `Bm25EngineTest` | — | BM25 retrieval |
-| `PerformanceTracerTest` | — | Performance metrics |
-| `SignatureVerifierTest` | — | Signature verification |
-| `FeedbackEngineTokenizerTest` | — | Feedback tokenization |
-| `GuardPreferencesTest` | — | DataStore preferences |
-| `RuleRepositoryTest` | — | Rule repository |
-| `RuleUpdateInteractorTest` | — | Rule update interactor |
-| `AnalyzeSmsUseCaseTest` | — | SMS analysis use case |
-| `AnalyzeWebPageUseCaseTest` | — | Web page analysis |
-| `CheckDomainRiskUseCaseTest` | — | Domain risk check |
-| `UpdateRulesUseCaseTest` | — | Rules update |
+| `HomographDetectorTest` | 16 | Homograph detection + pinyin confusion + brand-aware `assess()` |
+| `AdaptiveBloomFilterTest` | 8 | Bloom filter correctness |
+| `CooldownManagerTest` | 6 | Alert cooldown logic |
+| `BkTreeTest` | 10 | BK-tree operations |
+| `DnsPacketHandlerTest` | 15 | DNS packet parsing + response validation |
+| `DohClientTest` | 2 | DoH client |
+| `BpeTokenizerTest` | 9 | BPE tokenizer |
+| `ByteTokenizerTest` | 9 | Byte tokenizer |
+| `OnnxMlEngineTest` | 10 | ONNX engine |
+| `OnnxMlEngineSpikeTest` | 4 | ONNX integration |
+| `FeatureExtractorTest` | 23 | Feature extraction |
+| `Bm25EngineTest` | 8 | BM25 retrieval |
+| `PerformanceTracerTest` | 5 | Performance metrics |
+| `SignatureVerifierTest` | 6 | Ed25519 signature verification |
+| `FeedbackEngineTokenizerTest` | 7 | Feedback tokenization |
+| `GuardPreferencesTest` | 1 | DataStore preferences |
+| `RuleRepositoryTest` | 8 | Rule repository |
+| `RuleUpdateInteractorTest` | 8 | Rule update interactor (signature + replay protection) |
+| `AnalyzeSmsUseCaseTest` | 6 | SMS analysis use case |
+| `AnalyzeWebPageUseCaseTest` | 2 | Web page analysis |
+| `CheckDomainRiskUseCaseTest` | 3 | Domain risk check |
+| `UpdateRulesUseCaseTest` | 1 | Rules update |
 
 ### Android Instrumentation Tests (26 tests)
 
@@ -525,7 +539,7 @@ Submit suspicious domains to `rules/community/` directory in JSON format:
 
 - [PhiUSIIL](https://www.kaggle.com/datasets/shashwatwork/phiusiil-phishing-url-dataset) — URL phishing dataset
 - [ChiFraud](https://github.com/xuemingxxx/ChiFraud) — Chinese fraud SMS dataset
-- [FBS SMS](https://www.kaggle.com/datasets/uciml/sms-spam-collection-dataset) — SMS spam collection
+- [FBS SMS](https://github.com/Cypher-Z/FBS_SMS_Dataset) — Fake Base Station SMS dataset (CCS'20)
 - [mudou_spam](https://huggingface.co/datasets/shaonianruntu/Spam-Message-Classification) — Chinese SMS classification dataset (spam + ham)
 - [ONNX Runtime](https://onnxruntime.ai/) — On-device inference engine
 - [PhishTank](https://www.phishtank.com/) — Phishing domain intelligence
