@@ -9,4 +9,6 @@
     <string name="qr_scan_title">QR 码检测</string>
     <string name="nav_qr">扫码</string>
     <string name="action_scan_qr">扫码检测</string>
+    <string name="encryption_warning_title">数据库未加密</string>
+    <string name="encryption_warning_body">当前设备的安全存储不可用，防护记录仅保存在本次会话内存中，应用关闭后将丢失且不受加密保护。请在受支持的设备上运行以获得完整保护。</string>
 </resources>

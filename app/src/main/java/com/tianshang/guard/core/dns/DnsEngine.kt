@@ -18,4 +18,11 @@ interface DnsEngine {
     fun resolve(domain: String): DnsResult
     suspend fun addToWhitelist(domain: String)
     suspend fun addToBlacklist(domain: String)
+    /**
+     * Rebuild the in-memory block/allow filters (bloom filter, BK-tree, known
+     * domain cache) from the current rule repository. Called after a remote rule
+     * update so newly added blocklist entries take effect within the running VPN
+     * session (H-03).
+     */
+    suspend fun reloadFilter()
 }

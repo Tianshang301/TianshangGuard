@@ -41,4 +41,8 @@ interface AlertDao {
 
     @Query("DELETE FROM alerts")
     suspend fun clearAll()
+
+    // L-02: purge old alert history so visited-domain retention can be bounded.
+    @Query("DELETE FROM alerts WHERE timestamp < :cutoff")
+    suspend fun deleteOlderThan(cutoff: Long)
 }

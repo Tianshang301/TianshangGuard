@@ -111,12 +111,12 @@ val appModule = module {
 
     // ── Rule Update ──────────────────────────────────────────
     single { SignatureVerifier() }
-    single { RuleUpdateInteractor(get(), get(), get(), get()) }
+    single { RuleUpdateInteractor(get(), get(), get(), get(), get()) }
 
     // ── ViewModels ──────────────────────────────────────────
     viewModel { MainViewModel(get(), get(), get(), get()) }
     viewModel { QrPreviewViewModel(get(), get()) }
     viewModel { StatsViewModel(get()) }
-    viewModel { SettingsViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { SmsViewModel(get(), get()) }
 }

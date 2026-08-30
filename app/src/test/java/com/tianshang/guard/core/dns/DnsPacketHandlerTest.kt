@@ -111,37 +111,37 @@ class DnsPacketHandlerTest {
     @Test
     fun `validateDnsResponse returns true for matching response`() {
         val queryId = 0x1234.toShort()
-        val queryBuffer = ByteBuffer.allocate(256)
-        queryBuffer.putShort(0, queryId)
-        queryBuffer.putShort(2, 0x0100) // standard query, RD=1
-        queryBuffer.putShort(4, 1)      // QDCOUNT=1
-        queryBuffer.putShort(6, 0)
-        queryBuffer.putShort(8, 0)
-        queryBuffer.putShort(10, 0)
-        queryBuffer.position(12) // move past header for question section
-        // dummy question
-        queryBuffer.put(3) // length of "www"
-        queryBuffer.put("www".toByteArray())
-        queryBuffer.put(7) // length of "example"
-        queryBuffer.put("example".toByteArray())
-        queryBuffer.put(3) // length of "com"
-        queryBuffer.put("com".toByteArray())
-        queryBuffer.put(0) // terminator
-        queryBuffer.putShort(1)   // QTYPE=A
-        queryBuffer.putShort(1)   // QCLASS=IN
-        queryBuffer.rewind()
-        queryBuffer.limit(queryBuffer.capacity())
-
-        val responseBuffer = ByteBuffer.allocate(12)
-        responseBuffer.putShort(0, queryId)
-        responseBuffer.putShort(2, 0x8180.toShort()) // QR=1, RD=1, RA=1
-        responseBuffer.putShort(4, 1)
-        responseBuffer.putShort(6, 1)
-        responseBuffer.putShort(8, 0)
-        responseBuffer.putShort(10, 0)
+        // Build a full IPv4(20) + UDP(8) + DNS packet so validateDnsResponse /
+        // questionEndOffset parse the question section at the right offset.
+        fun buildPacket(id: Short): ByteBuffer {
+            val b = ByteBuffer.allocate(256)
+            b.put(0, (4 shl 4 or 5).toByte()) // IPv4, IHL=5
+            val dnsOffset = 28
+            b.putShort(dnsOffset, id)
+            b.putShort(dnsOffset + 2, 0x0100) // standard query, RD=1
+            b.putShort(dnsOffset + 4, 1)      // QDCOUNT=1
+            b.putShort(dnsOffset + 6, 0)
+            b.putShort(dnsOffset + 8, 0)
+            b.putShort(dnsOffset + 10, 0)
+            var p = dnsOffset + 12
+            b.put(p, 3); p++
+            "www".toByteArray().forEach { b.put(p++, it) }
+            b.put(p, 7); p++
+            "example".toByteArray().forEach { b.put(p++, it) }
+            b.put(p, 3); p++
+            "com".toByteArray().forEach { b.put(p++, it) }
+            b.put(p, 0); p++               // terminator
+            b.putShort(p, 1); p += 2       // QTYPE=A
+            b.putShort(p, 1); p += 2       // QCLASS=IN
+            b.position(0)
+            b.limit(p)
+            b.rewind()
+            return b
+        }
+        val queryBuffer = buildPacket(queryId)
+        val responseBuffer = buildPacket(queryId)
+        responseBuffer.putShort(28 + 2, 0x8180.toShort()) // QR=1, RD=1, RA=1
         responseBuffer.rewind()
-        responseBuffer.limit(responseBuffer.capacity())
-
         assertTrue(handler.validateDnsResponse(queryBuffer, responseBuffer))
     }
 

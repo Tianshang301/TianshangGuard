@@ -75,7 +75,9 @@ class InputSanitizer {
         if (!normalized.startsWith("http://") && !normalized.startsWith("https://")) {
             normalized = "https://$normalized"
         }
-        normalized = normalized.replace("http://", "https://")
+        // L-04: normalize via URI components instead of a naive global replace.
+        // A blanket replace("http://", "https://") also rewrote "http://" inside
+        // the path/query, corrupting the URL for model input and display.
         val uri = try {
             java.net.URI(normalized)
         } catch (_: Exception) {

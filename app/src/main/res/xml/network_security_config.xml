@@ -9,8 +9,14 @@
     <domain-config>
         <domain includeSubdomains="true">raw.githubusercontent.com</domain>
         <domain includeSubdomains="true">api.github.com</domain>
-        <pin-set expiration="2027-01-01">
-            <pin digest="SHA-256">WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=</pin>
+        <!--
+          H-05: multiple SPKI pins (primary + backup) so a single certificate
+          rotation does not silently break rule downloads (fail-closed: if no
+          pin matches, the connection is refused rather than downgraded).
+          Rotate by adding a new pin BEFORE the old one expires.
+        -->
+        <pin-set expiration="2030-01-01">
+            <pin digest="SHA-256">k2v657xBsOVe1PQRwWoDp9Fxfi2I4l4GlRnNfCeIDrI=</pin>
             <pin digest="SHA-256">RRM1dGqnDFsCJXBTHky16vi1obOlCgFFn/yOhI/y+ho=</pin>
         </pin-set>
     </domain-config>

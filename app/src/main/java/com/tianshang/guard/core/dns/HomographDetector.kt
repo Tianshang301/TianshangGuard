@@ -66,6 +66,51 @@ object HomographDetector {
         return HomographResult.Clean
     }
 
+    /**
+     * M-03: brand-aware homograph assessment (方案 X).
+     *
+     * A domain containing confusable characters is only **hard-blocked** when it
+     * is similar to a known brand AND contains at least 2 confusable characters
+     * (an unambiguous visual spoof). Pure internationalized domains that merely
+     * use look-alike letters but do not resemble any known brand are downgraded
+     * to [HomographResult.Suspicious] — the caller warns the user but does NOT
+     * silently block them (avoids the "one character blocks everything" false
+     * positive that broke legitimate IDN domains).
+     */
+    fun assess(domain: String, brandDomains: Collection<String>): HomographResult {
+        val normalized = domain.map { homographMap[it] ?: it }.joinToString("")
+
+        if (normalized != domain) {
+            val confusableCount = domain.count { homographMap.containsKey(it) }
+            val brandSimilar = brandDomains.any { fuzzyRatio(normalized, it) / 100f >= BRAND_SIMILARITY_THRESHOLD }
+            return if (brandSimilar && confusableCount >= MIN_CONFUSABLE_TO_BLOCK) {
+                HomographResult.Detected(
+                    type = HomographType.VISUAL_SPOOFING,
+                    original = domain,
+                    normalized = normalized
+                )
+            } else {
+                HomographResult.Suspicious(
+                    original = domain,
+                    normalized = normalized,
+                    confusableCount = confusableCount,
+                    brandSimilar = brandSimilar
+                )
+            }
+        }
+
+        if (hasSuspiciousPunycode(domain)) {
+            val punycode = try { IDN.toASCII(domain) } catch (_: Exception) { domain }
+            return HomographResult.Detected(
+                type = HomographType.PUNYCODE_SPOOFING,
+                original = domain,
+                punycode = punycode
+            )
+        }
+
+        return HomographResult.Clean
+    }
+
     fun checkPinyinConfusion(domain: String): Float {
         val lowerDomain = domain.lowercase()
         // HD-06: Use maxOfOrNull to handle empty collections
@@ -116,6 +161,11 @@ object HomographDetector {
         }
         return costs[b.length]
     }
+
+    // M-03: a confusable domain must resemble a known brand AND contain at
+    // least this many confusable characters to warrant a hard block.
+    private const val BRAND_SIMILARITY_THRESHOLD = 0.85f
+    private const val MIN_CONFUSABLE_TO_BLOCK = 2
 }
 
 sealed class HomographResult {
@@ -125,6 +175,12 @@ sealed class HomographResult {
         val original: String,
         val normalized: String? = null,
         val punycode: String? = null
+    ) : HomographResult()
+    data class Suspicious(
+        val original: String,
+        val normalized: String,
+        val confusableCount: Int,
+        val brandSimilar: Boolean
     ) : HomographResult()
 }
 

@@ -76,6 +76,8 @@
     <string name="settings_behavior_monitor_desc">Detect screen sharing + banking app combinations</string>
     <string name="settings_sms_monitor">SMS Monitor</string>
     <string name="settings_sms_monitor_desc">Real-time interception and analysis of suspicious SMS</string>
+    <string name="settings_visit_history">Visit History</string>
+    <string name="settings_visit_history_desc">Keep a local record of visited domains (disable to store none)</string>
     <string name="settings_boot_start">Boot Start</string>
     <string name="settings_boot_start_desc">Auto-run on system startup</string>
     <string name="settings_battery_optimization_section">Battery Optimization (%s)</string>

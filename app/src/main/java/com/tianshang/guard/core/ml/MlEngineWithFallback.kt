@@ -84,14 +84,18 @@ class MlEngineWithFallback(
         }
 
         // 1. Model inference → continuous score
-        // H-16: Synchronize on states map during iteration
-        val hasReadyModel = synchronized(states) {
-            states.any { it.value is MlState.Ready }
-        }
+        // H-01: gate on the SMS model specifically. Previously any ready model
+        // (e.g. the URL model, which always loads first) marked the engine as
+        // "available" and a missing SMS model silently scored 0f → SAFE. Now a
+        // missing SMS model routes to the rule-based engine instead of failing open.
+        val smsReady = getState(ModelType.SMS) is MlState.Ready
+                && onnxEngine.isModelLoaded(ModelType.SMS)
         val modelScore = when {
-            hasReadyModel -> runSmsWithScore(text)
-            // BUGFIX: Use .toScore() instead of .threshold to avoid boundary escalation
-            else -> fallbackEngine.analyzeSms(text).toScore()
+            smsReady -> runSmsWithScore(text)
+            else -> {
+                SecureLog.w("MlEngine", "SMS model not ready; using rule-based fallback for SMS analysis")
+                fallbackEngine.analyzeSms(text).toScore()
+            }
         }
 
         // 2. BM25 retrieval → continuous score (phishingRatio)

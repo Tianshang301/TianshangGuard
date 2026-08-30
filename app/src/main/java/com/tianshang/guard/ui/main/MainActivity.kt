@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tianshang.guard.R
 import com.tianshang.guard.service.GuardVpnService
+import com.tianshang.guard.data.local.security.EncryptedDatabaseProvider
 import com.tianshang.guard.ui.DisclaimerText
 import com.tianshang.guard.ui.onboarding.OnboardingScreen
 import com.tianshang.guard.ui.report.ReportScreen
@@ -81,6 +82,7 @@ import org.koin.core.component.inject
 class MainActivity : ComponentActivity(), KoinComponent {
 
     private val prefs: com.tianshang.guard.data.local.GuardPreferences by inject()
+    private val dbProvider: EncryptedDatabaseProvider by inject()
 
     override fun attachBaseContext(newBase: Context) {
         // Apply language setting before onCreate()
@@ -107,9 +109,35 @@ class MainActivity : ComponentActivity(), KoinComponent {
                         }
                     )
                 } else {
-                    MainApp()
+                    MainApp(secureStorageAvailable = dbProvider.secureStorageAvailable)
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun EncryptionWarningBanner() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = GuardRed.copy(alpha = 0.15f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.encryption_warning_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = GuardRed,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.encryption_warning_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = OnSurfaceVariantDark
+            )
         }
     }
 }
@@ -129,7 +157,7 @@ private fun stopVpnService(context: Context) {
 }
 
 @Composable
-fun MainApp() {
+fun MainApp(secureStorageAvailable: Boolean = true) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val viewModel: MainViewModel = koinViewModel()
 
@@ -192,6 +220,9 @@ fun MainApp() {
                 .background(DeepNavy)
                 .padding(innerPadding)
         ) {
+            if (!secureStorageAvailable) {
+                EncryptionWarningBanner()
+            }
             when (selectedTab) {
                 0 -> HomePage(viewModel, onNavigateToStats = { selectedTab = 2 }, onNavigateToReport = { selectedTab = 4 })
                 1 -> SmsScreen()

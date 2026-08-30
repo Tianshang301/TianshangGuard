@@ -60,6 +60,7 @@ fun SettingsScreen() {
     val soundAlert by viewModel.soundAlert.collectAsState(initial = true)
     val vibrateAlert by viewModel.vibrateAlert.collectAsState(initial = true)
     val smsMonitor by viewModel.smsMonitor.collectAsState(initial = false)
+    val visitHistoryEnabled by viewModel.visitHistoryEnabled.collectAsState(initial = true)
     val language by viewModel.language.collectAsState(initial = "system")
     val batteryOptimized = remember { viewModel.isBatteryOptimizationIgnored(context) }
     val brandName = remember { viewModel.getPhoneBrand() }
@@ -194,6 +195,7 @@ fun SettingsScreen() {
             SettingsToggle(stringResource(R.string.settings_vpn_auto_start), stringResource(R.string.settings_vpn_auto_start_desc), checked = vpnAutoStart, onCheckedChange = { viewModel.setVpnAutoStart(it) })
             SettingsToggle(stringResource(R.string.settings_behavior_monitor), stringResource(R.string.settings_behavior_monitor_desc), checked = behaviorMonitor, onCheckedChange = { viewModel.setBehaviorMonitor(it) })
             SettingsToggle(stringResource(R.string.settings_sms_monitor), stringResource(R.string.settings_sms_monitor_desc), checked = smsMonitor, onCheckedChange = { viewModel.setSmsMonitor(it) })
+            SettingsToggle(stringResource(R.string.settings_visit_history), stringResource(R.string.settings_visit_history_desc), checked = visitHistoryEnabled, onCheckedChange = { viewModel.setVisitHistoryEnabled(it) })
             SettingsToggle(stringResource(R.string.settings_boot_start), stringResource(R.string.settings_boot_start_desc), checked = bootStart, onCheckedChange = { viewModel.setBootStart(it) })
         }
         Spacer(modifier = Modifier.height(12.dp))
