@@ -23,12 +23,16 @@ class TieredAlertEngine(
     private val cooldownManager = CooldownManager(prefs)
     private val ioScope = CoroutineScope(Dispatchers.IO)
     
-    // Global rate limiter: max 1 alert per 5 seconds
+    // Global rate limiter: max 1 alert per 5 seconds.
+    // M-04: DANGEROUS alerts are exempt from this global limiter so an attacker
+    // cannot flood the window with low/medium phishing to suppress the critical
+    // one; the per-key cooldown still applies to prevent unbounded repetition.
     @Volatile private var lastGlobalAlertTime = 0L
     private val globalCooldownMs = 5000L
     private val globalAlertLock = Any()
 
-    private fun canLaunchAlert(): Boolean {
+    private fun canLaunchAlert(riskLevel: RiskLevel): Boolean {
+        if (riskLevel == RiskLevel.DANGEROUS) return true
         // H-10: Synchronized to prevent duplicate alerts
         synchronized(globalAlertLock) {
             val now = System.currentTimeMillis()
@@ -76,7 +80,7 @@ class TieredAlertEngine(
         record(AlertType.PHISHING_PAGE, url = url, riskLevel = riskLevel.name)
         val config = resolveAlertConfig(riskLevel)
         if (cooldownManager.isInCooldown("phishing_$url", config.cooldownSeconds)) return
-        if (!canLaunchAlert()) return // Global rate limit
+        if (!canLaunchAlert(riskLevel)) return // Global rate limit
 
         val key = "phishing_${System.currentTimeMillis()}"
         AlertDataHolder.put(key, AlertDataHolder.AlertData(
@@ -94,7 +98,7 @@ class TieredAlertEngine(
         record(AlertType.SUSPICIOUS_DOMAIN, domain = domain)
         val config = resolveAlertConfig(RiskLevel.SUSPICIOUS)
         if (cooldownManager.isInCooldown("domain_$domain", config.cooldownSeconds)) return
-        if (!canLaunchAlert()) return // Global rate limit
+        if (!canLaunchAlert(RiskLevel.SUSPICIOUS)) return // Global rate limit
 
         val key = "domain_${System.currentTimeMillis()}"
         AlertDataHolder.put(key, AlertDataHolder.AlertData(
@@ -119,7 +123,31 @@ class TieredAlertEngine(
     }
 
     override fun notifyVisited(domain: String) {
+        // L-02: respect the user's visit-history retention switch. When disabled,
+        // visited domains are not persisted (no browsing history is stored).
+        if (!prefs.isVisitHistoryEnabled()) return
         record(AlertType.VISITED, domain = domain)
+        periodicallyPurgeOldVisited()
+    }
+
+    // L-02: bound retention of VISITED records to 30 days, purging older entries
+    // opportunistically (rate-limited so it is not a hot-path DB write).
+    @Volatile private var lastVisitedPurge = 0L
+    private fun periodicallyPurgeOldVisited() {
+        val now = System.currentTimeMillis()
+        if (now - lastVisitedPurge < 600_000L) return
+        lastVisitedPurge = now
+        ioScope.launch {
+            try {
+                alertRepository.purgeOlderThan(now - VISITED_RETENTION_MS)
+            } catch (e: Exception) {
+                SecureLog.e("TieredAlert", "purge old VISITED failed", e)
+            }
+        }
+    }
+
+    private companion object {
+        private const val VISITED_RETENTION_MS = 30L * 24 * 60 * 60 * 1000
     }
 
     override fun showSmsWarning(sender: String, body: String, riskLevel: RiskLevel) {
@@ -130,11 +158,13 @@ class TieredAlertEngine(
         record(AlertType.SMS_PHISHING, domain = sender, riskLevel = riskLevel.name)
         val config = resolveAlertConfig(riskLevel)
 
-        val bodyHash = body.hashCode().toString()
-        val cooldownKey = "sms_${sender}_$bodyHash"
+        // M-04: use a SHA-256 of the (trimmed) body for the cooldown key so a
+        // crafted different body cannot collide on the same key and bypass cooldown.
+        val bodyKey = sha256(body.trim())
+        val cooldownKey = "sms_${sender}_$bodyKey"
 
         if (useCooldown && cooldownManager.isInCooldown(cooldownKey, config.cooldownSeconds)) return
-        if (!canLaunchAlert()) return // Global rate limit
+        if (!canLaunchAlert(riskLevel)) return // Global rate limit
 
         val key = "sms_${System.currentTimeMillis()}"
         AlertDataHolder.put(key, AlertDataHolder.AlertData(
@@ -147,6 +177,17 @@ class TieredAlertEngine(
         ))
         launchAlert(key)
         if (useCooldown) cooldownManager.recordTrigger(cooldownKey)
+    }
+
+    private fun sha256(text: String): String {
+        return try {
+            val md = java.security.MessageDigest.getInstance("SHA-256")
+            md.digest(text.toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it) }
+        } catch (e: Exception) {
+            // Should never happen; fall back to identity-based key.
+            text
+        }
     }
 
     private fun resolveAlertConfig(riskLevel: RiskLevel): AlertConfig {

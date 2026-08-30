@@ -1,6 +1,7 @@
 package com.tianshang.guard.core.update
 
 import com.tianshang.guard.BaseUnitTest
+import com.tianshang.guard.core.dns.DnsEngine
 import com.tianshang.guard.data.local.GuardPreferences
 import com.tianshang.guard.data.local.database.DomainCategory
 import com.tianshang.guard.data.local.database.DomainDao
@@ -24,11 +25,13 @@ class RuleUpdateInteractorTest : BaseUnitTest() {
     private val api = mockk<GithubRulesApi>(relaxed = true)
     private val domainDao = mockk<DomainDao>(relaxed = true)
     private val signatureVerifier = mockk<SignatureVerifier>(relaxed = true)
+    private val dnsEngine = mockk<DnsEngine>(relaxed = true)
     private lateinit var interactor: RuleUpdateInteractor
 
     @Before
     fun setUp() {
-        interactor = RuleUpdateInteractor(prefs, api, domainDao, signatureVerifier)
+        interactor = RuleUpdateInteractor(prefs, api, domainDao, signatureVerifier, dnsEngine)
+        every { prefs.rulesSignatureTimestamp } returns flowOf(0L)
     }
 
     @Test
@@ -44,7 +47,7 @@ class RuleUpdateInteractorTest : BaseUnitTest() {
     fun `execute returns true on successful update`() = runTest {
         every { prefs.rulesVersion } returns flowOf("1.0.0")
         coEvery { api.getLatestRulesVersion() } returns RulesVersion("2.0.0")
-        val diff = RulesDiff(adds = listOf("new.com"), removes = listOf("old.com"), signature = "abc")
+        val diff = RulesDiff(adds = listOf("new.com"), removes = listOf("old.com"), signature = "abc", timestamp = System.currentTimeMillis())
         coEvery { api.getRulesDiff("1.0.0") } returns diff
         every { signatureVerifier.verify(diff) } returns true
         coEvery { domainDao.isWhitelisted(any()) } returns false
@@ -87,7 +90,7 @@ class RuleUpdateInteractorTest : BaseUnitTest() {
     fun `execute inserts adds as blacklist entries`() = runTest {
         every { prefs.rulesVersion } returns flowOf("1.0.0")
         coEvery { api.getLatestRulesVersion() } returns RulesVersion("2.0.0")
-        val diff = RulesDiff(adds = listOf("evil.com", "phish.net"), removes = emptyList(), signature = "abc")
+        val diff = RulesDiff(adds = listOf("evil.com", "phish.net"), removes = emptyList(), signature = "abc", timestamp = System.currentTimeMillis())
         coEvery { api.getRulesDiff("1.0.0") } returns diff
         every { signatureVerifier.verify(diff) } returns true
         coEvery { domainDao.isWhitelisted(any()) } returns false
@@ -108,7 +111,7 @@ class RuleUpdateInteractorTest : BaseUnitTest() {
     fun `execute skips adds that are already whitelisted`() = runTest {
         every { prefs.rulesVersion } returns flowOf("1.0.0")
         coEvery { api.getLatestRulesVersion() } returns RulesVersion("2.0.0")
-        val diff = RulesDiff(adds = listOf("trusted.com"), removes = emptyList(), signature = "abc")
+        val diff = RulesDiff(adds = listOf("trusted.com"), removes = emptyList(), signature = "abc", timestamp = System.currentTimeMillis())
         coEvery { api.getRulesDiff("1.0.0") } returns diff
         every { signatureVerifier.verify(diff) } returns true
         coEvery { domainDao.isWhitelisted("trusted.com") } returns true
@@ -121,7 +124,7 @@ class RuleUpdateInteractorTest : BaseUnitTest() {
     fun `execute skips invalid domain formats`() = runTest {
         every { prefs.rulesVersion } returns flowOf("1.0.0")
         coEvery { api.getLatestRulesVersion() } returns RulesVersion("2.0.0")
-        val diff = RulesDiff(adds = listOf("-invalid.com", "valid.com"), removes = emptyList(), signature = "abc")
+        val diff = RulesDiff(adds = listOf("-invalid.com", "valid.com"), removes = emptyList(), signature = "abc", timestamp = System.currentTimeMillis())
         coEvery { api.getRulesDiff("1.0.0") } returns diff
         every { signatureVerifier.verify(diff) } returns true
         coEvery { domainDao.isWhitelisted(any()) } returns false

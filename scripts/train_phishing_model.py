@@ -598,6 +598,16 @@ class FocalLoss(nn.Module):
         return (alpha_t * focal_weight * bce).mean()
 
 # ── Checkpoint Save / Resume ───────────────────────────────
+def _serialize_np_state(state):
+    # np.random.get_state() -> (name, ndarray(uint32), pos, has_gauss, cached_gaussian).
+    # Convert the ndarray to a plain list so the checkpoint contains only
+    # primitives/tensors and can be loaded with torch.load(weights_only=True)
+    # (audit M-05: rejects unsafe pickles / arbitrary code execution).
+    return [state[0], state[1].tolist(), state[2], state[3], state[4]]
+
+def _deserialize_np_state(data):
+    return (data[0], np.asarray(data[1], dtype=np.uint32), data[2], data[3], data[4])
+
 def save_checkpoint(config, model, optimizer, scheduler, epoch, best_val_loss, scaler=None):
     ckpt = {
         "epoch": epoch,
@@ -606,7 +616,7 @@ def save_checkpoint(config, model, optimizer, scheduler, epoch, best_val_loss, s
         "optimizer_state_dict": optimizer.state_dict(),
         "scheduler_state_dict": scheduler.state_dict(),
         "random_state": random.getstate(),
-        "np_random_state": np.random.get_state(),
+        "np_random_state": _serialize_np_state(np.random.get_state()),
         "torch_random_state": torch.get_rng_state(),
         "torch_cuda_random_state": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else [],
     }
@@ -616,12 +626,12 @@ def save_checkpoint(config, model, optimizer, scheduler, epoch, best_val_loss, s
     print(f"  -> Checkpoint saved (epoch {epoch})")
 
 def load_checkpoint(config, model, optimizer, scheduler, scaler=None):
-    ckpt = torch.load(config.checkpoint_path, map_location=device, weights_only=False)
+    ckpt = torch.load(config.checkpoint_path, map_location=device, weights_only=True)
     model.load_state_dict(ckpt["model_state_dict"])
     optimizer.load_state_dict(ckpt["optimizer_state_dict"])
     scheduler.load_state_dict(ckpt["scheduler_state_dict"])
     random.setstate(ckpt["random_state"])
-    np.random.set_state(ckpt["np_random_state"])
+    np.random.set_state(_deserialize_np_state(ckpt["np_random_state"]))
     try:
         torch.set_rng_state(ckpt["torch_random_state"])
     except Exception:
@@ -1200,7 +1210,7 @@ def train(fresh=False, mode="url", load_weights=None, lr=None, epochs=None):
 
     # ── Load custom weights (model_epoch_N.pt) ──────────────
     if load_weights and os.path.exists(load_weights):
-        state_dict = torch.load(load_weights, map_location=device, weights_only=False)
+        state_dict = torch.load(load_weights, map_location=device, weights_only=True)
         # Handle both full checkpoint and state_dict
         if "model_state_dict" in state_dict:
             model.load_state_dict(state_dict["model_state_dict"])

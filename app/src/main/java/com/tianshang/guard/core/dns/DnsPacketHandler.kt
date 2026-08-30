@@ -218,19 +218,86 @@ class DnsPacketHandler {
     }
 
     fun validateDnsResponse(query: ByteBuffer, response: ByteBuffer): Boolean {
-        // VPN-02: Validate DNS response integrity
+        // VPN-02: Validate DNS response integrity. Both buffers are full
+        // IP(+UDP)+DNS packets as produced by buildResponseFromUpstream.
         if (response.remaining() < 12) return false
 
+        val qDns = dnsOffset(query)
+        val rDns = dnsOffset(response)
+        if (qDns < 0 || rDns < 0) return false
+
         // Check transaction ID match
-        val queryId = query.getShort(query.position()).toInt() and 0xFFFF
-        val responseId = response.getShort(0).toInt() and 0xFFFF
+        val queryId = query.getShort(qDns).toInt() and 0xFFFF
+        val responseId = response.getShort(rDns).toInt() and 0xFFFF
         if (queryId != responseId) return false
 
         // Check QR bit (must be 1 for response)
-        val flags = response.getShort(2).toInt() and 0xFFFF
+        val flags = response.getShort(rDns + 2).toInt() and 0xFFFF
         if (flags and 0x8000 == 0) return false
 
+        // RCODE must be a standard code (0-5); reject malformed/unknown codes.
+        val rcode = flags and 0x000F
+        if (rcode > 5) return false
+
+        // The question section must match the query byte-for-byte. A forged
+        // response that answers a different name (cache poisoning) is rejected.
+        val qStart = qDns + 12
+        val respQStart = rDns + 12
+        val qEnd = questionEndOffset(query)
+        val respQEnd = questionEndOffset(response)
+        if (qEnd < 0 || respQEnd < 0) return false
+        val qLen = qEnd - qStart
+        if (qLen != respQEnd - respQStart) return false
+        for (k in 0 until qLen) {
+            if (query.get(qStart + k) != response.get(respQStart + k)) return false
+        }
         return true
+    }
+
+    private fun dnsOffset(buffer: ByteBuffer): Int {
+        val version = buffer.get(0).toInt() shr 4 and 0xF
+        val ipHeaderLen = if (version == 4) (buffer.get(0).toInt() and 0xF) * 4 else 40
+        val off = ipHeaderLen + 8
+        if (buffer.remaining() < off + 12) return -1
+        return off
+    }
+
+    /**
+     * Compute the offset just past the question section (QNAME + QTYPE + QCLASS),
+     * starting from the first byte of the given DNS packet buffer.
+     * Returns -1 if the buffer is too short or the name is malformed.
+     */
+    private fun questionEndOffset(buffer: ByteBuffer): Int {
+        val dnsOff = dnsOffset(buffer)
+        if (dnsOff < 0) return -1
+        var pos = dnsOff + 12
+        while (pos < buffer.remaining()) {
+            val len = buffer.get(pos).toInt() and 0xFF
+            if (len == 0) {
+                pos += 1
+                break
+            }
+            if (len and 0xC0 == 0xC0) {
+                pos += 2
+                break
+            }
+            pos += len + 1
+        }
+        return pos + 4 // QTYPE + QCLASS
+    }
+
+    fun buildErrorResponse(query: ByteBuffer, rcode: Int): ByteBuffer {
+        val nx = buildNxDomainResponse(query)
+        if (nx.remaining() < 4) return nx
+        // Overwrite RCODE in the flags field (bytes 2-3 of the DNS header).
+        val version = query.get(0).toInt() shr 4 and 0xF
+        val ipHeaderLen = if (version == 4) (query.get(0).toInt() and 0xF) * 4 else 40
+        val dnsOffset = ipHeaderLen + 8
+        val flags = nx.getShort(dnsOffset + 2).toInt() and 0xFFFF
+        val newFlags = (flags and 0xFFF0) or (rcode and 0x000F)
+        nx.putShort(dnsOffset + 2, newFlags.toShort())
+        nx.rewind()
+        return nx
     }
 
     private fun swapIpAddresses(buffer: ByteBuffer, version: Int) {

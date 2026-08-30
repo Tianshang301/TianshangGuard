@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +29,9 @@ class GuardPreferences(
         private val KEY_VIBRATE_ALERT = booleanPreferencesKey("vibrate_alert")
         private val KEY_SMS_MONITOR = booleanPreferencesKey("sms_monitor")
         private val KEY_LANGUAGE = stringPreferencesKey("app_language")
+        private val KEY_RULES_SIGNATURE_TS = longPreferencesKey("rules_signature_timestamp")
+        // L-02: user-controlled retention of the visited-domain history.
+        private val KEY_VISIT_HISTORY_ENABLED = booleanPreferencesKey("visit_history_enabled")
 
         fun create(context: Context): GuardPreferences {
             return GuardPreferences(context.dataStore)
@@ -73,6 +77,10 @@ class GuardPreferences(
         prefs[KEY_RULES_VERSION] ?: "0"
     }
 
+    val visitHistoryEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[KEY_VISIT_HISTORY_ENABLED] ?: true
+    }
+
     suspend fun setOnboardingDone() {
         dataStore.edit { prefs -> prefs[KEY_ONBOARDING_DONE] = 1 }
     }
@@ -81,10 +89,28 @@ class GuardPreferences(
         dataStore.edit { prefs -> prefs[KEY_RULES_VERSION] = version }
     }
 
+    val rulesSignatureTimestamp: Flow<Long> = dataStore.data.map { prefs ->
+        prefs[KEY_RULES_SIGNATURE_TS] ?: 0L
+    }
+
+    suspend fun setRulesSignatureTimestamp(ts: Long) {
+        dataStore.edit { prefs -> prefs[KEY_RULES_SIGNATURE_TS] = ts }
+    }
+
     fun isBootStartEnabled(): Boolean {
         return kotlinx.coroutines.runBlocking {
             dataStore.data.map { prefs -> prefs[KEY_BOOT_START] ?: true }.first()
         }
+    }
+
+    fun isVisitHistoryEnabled(): Boolean {
+        return kotlinx.coroutines.runBlocking {
+            dataStore.data.map { prefs -> prefs[KEY_VISIT_HISTORY_ENABLED] ?: true }.first()
+        }
+    }
+
+    suspend fun setVisitHistoryEnabled(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_VISIT_HISTORY_ENABLED] = enabled }
     }
 
     suspend fun setVpnAutoStart(enabled: Boolean) {

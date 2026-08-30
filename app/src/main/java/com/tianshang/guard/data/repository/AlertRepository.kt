@@ -53,6 +53,11 @@ class AlertRepository(private val alertDao: AlertDao) {
         alertDao.clearAll()
     }
 
+    // L-02: purge alert history older than the given cutoff timestamp.
+    suspend fun purgeOlderThan(cutoff: Long) {
+        alertDao.deleteOlderThan(cutoff)
+    }
+
     companion object {
         fun todayStartMs(): Long {
             return LocalDate.now()

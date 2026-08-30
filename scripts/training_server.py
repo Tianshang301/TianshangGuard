@@ -1,11 +1,30 @@
 #!/usr/bin/env python3
 """Training Dashboard Backend — Flask + SSE"""
 
-import json, os, re, subprocess, threading, time
+import hmac, json, os, re, subprocess, threading, time
 from pathlib import Path
-from flask import Flask, Response, jsonify, send_file
+from flask import Flask, Response, jsonify, send_file, request
 
 app = Flask(__name__)
+
+# Optional auth token (M-05). Set GUARD_TRAIN_TOKEN to require a token on /api/*.
+# The server is bound to 127.0.0.1 only; the token adds defense-in-depth against
+# local processes. When unset, the dashboard works without credentials.
+TOKEN = os.environ.get("GUARD_TRAIN_TOKEN", "")
+
+
+def _authorized():
+    if not TOKEN:
+        return True
+    auth = request.headers.get("Authorization", "")
+    provided = auth[len("Bearer "):] if auth.startswith("Bearer ") else request.args.get("token", "")
+    return hmac.compare_digest(provided, TOKEN)
+
+
+@app.before_request
+def _guard_api():
+    if request.path.startswith("/api") and not _authorized():
+        return jsonify({"error": "unauthorized"}), 401
 
 BASE = Path(__file__).parent
 MODELS = {
@@ -165,5 +184,8 @@ def api_stream(mid):
 if __name__ == "__main__":
     print("=" * 50)
     print("  Dashboard: http://localhost:5050")
+    if TOKEN:
+        print("  Auth:     GUARD_TRAIN_TOKEN set (Bearer or ?token= required on /api/*)")
     print("=" * 50)
-    app.run(host="0.0.0.0", port=5050, debug=False, threaded=True)
+    # M-05: bind to loopback only so LAN hosts cannot reach /api/start|logs|stream.
+    app.run(host="127.0.0.1", port=5050, debug=False, threaded=True)

@@ -16,11 +16,11 @@ import com.tianshang.guard.core.util.SecureLog
 import com.tianshang.guard.ui.main.MainActivity
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.net.DatagramPacket
-import java.net.DatagramSocket
-import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -54,6 +54,14 @@ class GuardVpnService : VpnService() {
     }
     private val CACHE_TTL_MS = 300_000L // 5 minutes
 
+    // H-02: Bounded async resolution. The single read loop only reads packets and
+    // dispatches resolution to a fixed thread pool; responses are written back
+    // under a single lock. This prevents a flood of (cache-missing) queries from
+    // serially blocking the one packet-handling thread and stalling all DNS.
+    private val resolutionExecutor = Executors.newFixedThreadPool(POOL_SIZE)
+    private val inflight = Semaphore(MAX_INFLIGHT, true)
+    private val perSourceLimiters = ConcurrentHashMap<String, TokenBucket>()
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var keepaliveJob: Job? = null
     private var watchdogJob: Job? = null
@@ -74,6 +82,12 @@ class GuardVpnService : VpnService() {
         private const val KEEPALIVE_INTERVAL_MS = 30_000L
         private const val IDLE_TIMEOUT_MS = 120_000L
         private const val WATCHDOG_INTERVAL_MS = 30_000L
+
+        // H-02: concurrency / overload bounds
+        private const val POOL_SIZE = 8
+        private const val MAX_INFLIGHT = 32
+        private const val PER_SOURCE_CAPACITY = 64.0
+        private const val PER_SOURCE_REFILL_PER_MS = 0.064 // ~64 req/sec refill
     }
 
     override fun onCreate() {
@@ -164,8 +178,7 @@ class GuardVpnService : VpnService() {
                     val domain = packetHandler.extractDomain(buffer)
                     if (domain.isEmpty()) continue
 
-                    // VPN-03: Cache lookup with TTL check
-                    // BUGFIX: Don't hold lock during expensive dnsEngine.resolve()
+                    // VPN-03: Cache lookup with TTL check (served synchronously; cheap).
                     val cached = synchronized(dnsCache) {
                         val entry = dnsCache[domain]
                         if (entry != null && System.currentTimeMillis() - entry.timestamp < CACHE_TTL_MS) {
@@ -175,23 +188,71 @@ class GuardVpnService : VpnService() {
                             null
                         }
                     }
-                    val result = cached ?: run {
-                        val fresh = dnsEngine.resolve(domain)
-                        synchronized(dnsCache) {
-                            dnsCache[domain] = CacheEntry(fresh, System.currentTimeMillis())
+
+                    if (cached != null) {
+                        val response = if (cached is DnsResult.Block) {
+                            SecureLog.w("GuardVpnService", "Blocked (cached): $domain")
+                            packetHandler.buildNxDomainResponse(buffer)
+                        } else {
+                            forwardToUpstreamDns(buffer)
                         }
-                        fresh
+                        if (response != null) {
+                            synchronized(output) {
+                                output.write(response.array(), response.arrayOffset(), response.remaining())
+                            }
+                        }
+                        continue
                     }
 
-                    val response = if (result is DnsResult.Block) {
-                        SecureLog.w("GuardVpnService", "Blocked: $domain")
-                        packetHandler.buildNxDomainResponse(buffer)
-                    } else {
-                        forwardToUpstreamDns(buffer)
+                    // Cache miss: enforce per-source rate limiting and a global
+                    // in-flight cap before dispatching to the resolution pool.
+                    val srcKey = extractSourceIp(buffer)
+                    val bucket = perSourceLimiters.computeIfAbsent(srcKey) {
+                        TokenBucket(PER_SOURCE_CAPACITY, PER_SOURCE_REFILL_PER_MS)
+                    }
+                    if (!bucket.tryAcquire()) {
+                        SecureLog.w("GuardVpnService", "Per-source rate limit exceeded for $srcKey, returning SERVFAIL")
+                        val sf = packetHandler.buildErrorResponse(buffer, 2)
+                        synchronized(output) {
+                            output.write(sf.array(), sf.arrayOffset(), sf.remaining())
+                        }
+                        continue
+                    }
+                    if (!inflight.tryAcquire()) {
+                        SecureLog.w("GuardVpnService", "Resolution in-flight cap reached, returning SERVFAIL")
+                        val sf = packetHandler.buildErrorResponse(buffer, 2)
+                        synchronized(output) {
+                            output.write(sf.array(), sf.arrayOffset(), sf.remaining())
+                        }
+                        continue
                     }
 
-                    if (response != null) {
-                        output.write(response.array(), response.arrayOffset(), response.remaining())
+                    // H-02: copy the packet bytes — the read loop reuses `packet`.
+                    val copy = ByteArray(length)
+                    System.arraycopy(packet, 0, copy, 0, length)
+                    resolutionExecutor.execute {
+                        try {
+                            val cbuf = ByteBuffer.wrap(copy)
+                            val result = dnsEngine.resolve(domain)
+                            synchronized(dnsCache) {
+                                dnsCache[domain] = CacheEntry(result, System.currentTimeMillis())
+                            }
+                            val response = if (result is DnsResult.Block) {
+                                SecureLog.w("GuardVpnService", "Blocked: $domain")
+                                packetHandler.buildNxDomainResponse(cbuf)
+                            } else {
+                                forwardToUpstreamDns(cbuf)
+                            }
+                            if (response != null) {
+                                synchronized(output) {
+                                    output.write(response.array(), response.arrayOffset(), response.remaining())
+                                }
+                            }
+                        } catch (e: Exception) {
+                            SecureLog.e("GuardVpnService", "Resolution task error", e)
+                        } finally {
+                            inflight.release()
+                        }
                     }
                 } catch (e: java.io.EOFException) {
                     SecureLog.w("GuardVpnService", "VPN interface closed (EOF)")
@@ -216,6 +277,28 @@ class GuardVpnService : VpnService() {
             try { output.close() } catch (_: Exception) {}
         }
         SecureLog.i("GuardVpnService", "Packet handler stopped")
+    }
+
+    private fun extractSourceIp(buffer: ByteBuffer): String {
+        val version = buffer.get(0).toInt() shr 4 and 0xF
+        return try {
+            if (version == 4) {
+                val b0 = buffer.get(12).toInt() and 0xFF
+                val b1 = buffer.get(13).toInt() and 0xFF
+                val b2 = buffer.get(14).toInt() and 0xFF
+                val b3 = buffer.get(15).toInt() and 0xFF
+                "$b0.$b1.$b2.$b3"
+            } else {
+                // IPv6: use first 8 bytes as a coarse key
+                buildString {
+                    for (i in 8 until 24 step 2) {
+                        append((buffer.get(i).toInt() and 0xFF).toString(16))
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            "unknown"
+        }
     }
 
     private suspend fun runKeepaliveLoop() {
@@ -245,35 +328,11 @@ class GuardVpnService : VpnService() {
     private fun sendKeepaliveQuery() {
         if (!running) return
         try {
-            // L-9: Use SecureRandom for unpredictable transaction ID
-            val id = secureRandom.nextInt(0xFFFF).toShort()
-            val query = ByteBuffer.allocate(512)
-            query.putShort(id)
-            query.putShort(0x0100) // Standard query, recursion desired
-            query.putShort(1) // QDCOUNT
-            query.putShort(0) // ANCOUNT
-            query.putShort(0) // NSCOUNT
-            query.putShort(0) // ARCOUNT
-
-            // Encode domain: keepalive.tianshang.local
-            val labels = listOf("keepalive", "tianshang", "local")
-            for (label in labels) {
-                query.put(label.length.toByte())
-                query.put(label.toByteArray(Charsets.US_ASCII))
-            }
-            query.put(0) // Root label
-
-            query.putShort(1) // QTYPE: A
-            query.putShort(1) // QCLASS: IN
-
-            DatagramSocket().use { socket ->
-                socket.soTimeout = 2000
-                val request = DatagramPacket(
-                    query.array(), query.position(),
-                    InetAddress.getByName(UPSTREAM_DNS), UPSTREAM_DNS_PORT
-                )
-                socket.send(request)
-            }
+            // L-01: encrypted keepalive via DoH only. There is deliberately NO
+            // plaintext UDP probe/fallback: a fixed plaintext query to 1.1.1.1:53
+            // would leak a stable identifier and echo the downgrade behaviour the
+            // audit flagged. If DoH is unreachable the keepalive simply no-ops.
+            dohClient.sendKeepalive()
         } catch (e: Exception) {
             SecureLog.v("GuardVpnService", "Keepalive error (normal if idle)", e)
         }
@@ -283,11 +342,13 @@ class GuardVpnService : VpnService() {
         return try {
             val dnsPayload = packetHandler.extractDnsPayload(query)
 
-            // Use DoH (DNS over HTTPS) with UDP fallback
+            // Use DoH (DNS over HTTPS). On total failure we return an explicit
+            // SERVFAIL rather than silently dropping (or downgrading to plaintext
+            // UDP), so the client fails fast and cannot be poisoned (C-02).
             val responseBytes = dohClient.resolve(dnsPayload)
             if (responseBytes == null) {
-                SecureLog.w("GuardVpnService", "DNS resolution failed (both DoH and UDP)")
-                return null
+                SecureLog.w("GuardVpnService", "DNS resolution failed (all DoH endpoints); returning SERVFAIL")
+                return packetHandler.buildErrorResponse(query, 2)
             }
 
             val upstreamResponse = ByteBuffer.wrap(responseBytes)
@@ -354,11 +415,19 @@ class GuardVpnService : VpnService() {
         watchdogJob?.cancel()
         watchdogJob = null
         dnsEngine.stop()
+        shutdownResolutionPool()
         try {
             vpnInterface?.close()
         } catch (_: Exception) {
         }
         vpnInterface = null
+    }
+
+    private fun shutdownResolutionPool() {
+        perSourceLimiters.clear()
+        try {
+            resolutionExecutor.shutdownNow()
+        } catch (_: Exception) {}
     }
 
     private fun runOnMainThread(action: () -> Unit) {
@@ -407,9 +476,35 @@ class GuardVpnService : VpnService() {
         keepaliveJob?.cancel()
         watchdogJob?.cancel()
         dnsEngine.stop()
+        shutdownResolutionPool()
         try { vpnInterface?.close() } catch (_: Exception) {}
         vpnInterface = null
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+}
+
+/**
+ * Simple thread-safe token-bucket rate limiter used to bound DNS queries per
+ * source IP (H-02). Tokens refill continuously at [refillPerMs] tokens per ms up
+ * to [capacity]; [tryAcquire] succeeds only when at least one token is available.
+ */
+private class TokenBucket(capacity: Double, private val refillPerMs: Double) {
+    private val capacity = capacity
+    @Volatile private var tokens = capacity
+    @Volatile private var lastNs = System.nanoTime()
+
+    @Synchronized
+    fun tryAcquire(): Boolean {
+        val now = System.nanoTime()
+        val elapsedMs = (now - lastNs) / 1_000_000.0
+        lastNs = now
+        tokens = (tokens + elapsedMs * refillPerMs).coerceAtMost(capacity)
+        return if (tokens >= 1.0) {
+            tokens -= 1.0
+            true
+        } else {
+            false
+        }
     }
 }

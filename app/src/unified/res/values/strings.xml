@@ -79,6 +79,8 @@
     <string name="settings_behavior_monitor_desc">检测屏幕共享 + 银行应用组合</string>
     <string name="settings_sms_monitor">短信监控</string>
     <string name="settings_sms_monitor_desc">实时拦截并分析可疑短信</string>
+    <string name="settings_visit_history">访问记录留存</string>
+    <string name="settings_visit_history_desc">仅本地保存访问域名历史，可关闭以不记录</string>
     <string name="settings_boot_start">开机启动</string>
     <string name="settings_boot_start_desc">系统启动时自动运行</string>
     <string name="settings_battery_optimization_section">电池优化（%s）</string>

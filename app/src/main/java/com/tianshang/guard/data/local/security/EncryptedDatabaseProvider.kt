@@ -3,6 +3,7 @@ package com.tianshang.guard.data.local.security
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.security.keystore.StrongBoxUnavailableException
 import androidx.room.Room
 import com.tianshang.guard.core.util.SecureLog
 import com.tianshang.guard.data.local.database.AlertEntity
@@ -18,18 +19,43 @@ import net.sqlcipher.database.SQLiteDatabaseHook
 import net.sqlcipher.database.SupportFactory
 import java.io.File
 import java.security.KeyStore
+import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 import android.util.Base64
 
 class EncryptedDatabaseProvider(private val context: Context) {
 
+    /**
+     * True when the active database is the encrypted (SQLCipher) store.
+     * Becomes false if SQLCipher's native library is unavailable and we fall back
+     * to a volatile in-memory database (see C-03). UI should surface this so the
+     * user is aware their data is not at rest.
+     */
+    @Volatile var secureStorageAvailable: Boolean = true
+        private set
+
+    /**
+     * Whether the Keystore key used to derive the database passphrase is backed by
+     * secure hardware (StrongBox/TEE). Surfaced for audit/transparency; a value of
+     * false (e.g. StrongBox unavailable) still uses a TEE-bound key and is safe,
+     * but is flagged so users/auditors are aware of the protection level.
+     */
+    @Volatile var secureStorageHardwareBacked: Boolean = false
+        private set
+
     companion object {
         private const val KEYSTORE_PROVIDER = "AndroidKeyStore"
         private const val KEY_ALIAS = "guard_db_key"
-        private const val PREFS_NAME = "guard_db_prefs"
-        private const val KEY_DB_PASSPHRASE = "db_passphrase"
         private const val DB_NAME = "guard.db"
+
+        // Fixed, non-secret inputs used to deterministically derive the SQLCipher
+        // passphrase from the Keystore key. The passphrase is never persisted; it is
+        // recomputed on each launch from the hardware-bound key (H-04: removes the
+        // SharedPreferences passphrase middle layer).
+        private val FIXED_IV = ByteArray(12)
+        private val FIXED_PLAINTEXT = "tianshang-guard-db-passphrase".toByteArray(Charsets.UTF_8)
 
         // SQLCipher v4.5.4 default parameters — declared explicitly to ensure
         // compatibility if future SQLCipher versions change their defaults.
@@ -63,10 +89,14 @@ class EncryptedDatabaseProvider(private val context: Context) {
         try {
             SQLiteDatabase.loadLibs(context)
         } catch (e: UnsatisfiedLinkError) {
-            SecureLog.e("EncryptedDatabaseProvider", "SQLCipher native library not available", e)
+            // C-03: fail-closed. Do NOT silently fall back to a plaintext on-disk
+            // database that any local entity could read. Use a volatile in-memory
+            // store and flag the condition so the UI can warn the user.
+            SecureLog.e("EncryptedDatabaseProvider", "SQLCipher native library not available; using in-memory store", e)
+            secureStorageAvailable = false
             return buildFallbackDatabase()
         }
-        val passphrase = getOrCreatePassphrase()
+        val passphrase = derivePassphrase()
         val passphraseBytes = passphrase.toByteArray(Charsets.UTF_8)
         val factory = SupportFactory(passphraseBytes, CIPHER_HOOK)
 
@@ -102,15 +132,17 @@ class EncryptedDatabaseProvider(private val context: Context) {
 
     /**
      * Build a fallback database when SQLCipher native library is unavailable.
-     * Uses plaintext Room database — no encryption, but avoids app crash.
-     * This should only happen on unsupported devices (e.g. x86 emulators without ARM libs).
+     *
+     * C-03: we intentionally do NOT write a plaintext on-disk database. Instead we
+     * use a volatile in-memory Room database. All data is lost when the process
+     * dies, but at-rest data is never exposed in cleartext. The caller is expected
+     * to surface [secureStorageAvailable == false] to the user.
      */
     private fun buildFallbackDatabase(): GuardDatabase {
-        SecureLog.w("EncryptedDatabaseProvider", "SQLCipher unavailable, building plaintext Room database")
-        return Room.databaseBuilder(
+        SecureLog.w("EncryptedDatabaseProvider", "SQLCipher unavailable, building in-memory (non-persistent) database")
+        return Room.inMemoryDatabaseBuilder(
             context,
-            GuardDatabase::class.java,
-            DB_NAME
+            GuardDatabase::class.java
         )
             .addMigrations(
                 GuardDatabase.MIGRATION_1_2,
@@ -225,6 +257,12 @@ class EncryptedDatabaseProvider(private val context: Context) {
             SecureLog.e("EncryptedDatabaseProvider", "Failed to read old database", e)
             return null
         } finally {
+            try {
+                // Force a full WAL checkpoint so all dirty pages are flushed back
+                // into the main database file before we close & delete it,
+                // minimizing the chance of a recoverable plaintext residue.
+                oldDb?.rawQuery("PRAGMA wal_checkpoint(FULL)", null)?.use {}
+            } catch (_: Exception) {}
             try { oldDb?.close() } catch (_: Exception) {}
             // Delete old database files (including WAL and SHM)
             dbFile.delete()
@@ -254,45 +292,18 @@ class EncryptedDatabaseProvider(private val context: Context) {
         SecureLog.i("EncryptedDatabaseProvider", "Migration data written to encrypted database")
     }
 
-    private fun getOrCreatePassphrase(): String {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val existing = prefs.getString(KEY_DB_PASSPHRASE, null)
-        if (existing != null) {
-            return decryptPassphrase(existing)
-        }
-
-        // Generate new passphrase
-        val newPassphrase = generatePassphrase()
-        val encrypted = encryptPassphrase(newPassphrase)
-        prefs.edit().putString(KEY_DB_PASSPHRASE, encrypted).apply()
-        SecureLog.i("EncryptedDatabaseProvider", "New database passphrase generated")
-        return newPassphrase
-    }
-
-    private fun generatePassphrase(): String {
-        val bytes = ByteArray(32)
-        java.security.SecureRandom().nextBytes(bytes)
-        return Base64.encodeToString(bytes, Base64.NO_WRAP)
-    }
-
-    private fun encryptPassphrase(plain: String): String {
+    /**
+     * Deterministically derive the SQLCipher passphrase from the hardware-bound
+     * Keystore key. Because the plaintext and IV are fixed, the output is stable
+     * across launches, so no passphrase needs to be persisted in SharedPreferences
+     * (H-04).
+     */
+    private fun derivePassphrase(): String {
         val key = getOrCreateKey()
-        val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, key)
-        val iv = cipher.iv
-        val encrypted = cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
-        val combined = iv + encrypted
-        return Base64.encodeToString(combined, Base64.NO_WRAP)
-    }
-
-    private fun decryptPassphrase(encrypted: String): String {
-        val key = getOrCreateKey()
-        val combined = Base64.decode(encrypted, Base64.NO_WRAP)
-        val iv = combined.copyOfRange(0, 12)
-        val data = combined.copyOfRange(12, combined.size)
-        val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(javax.crypto.Cipher.DECRYPT_MODE, key, javax.crypto.spec.GCMParameterSpec(128, iv))
-        return String(cipher.doFinal(data), Charsets.UTF_8)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(128, FIXED_IV))
+        val encrypted = cipher.doFinal(FIXED_PLAINTEXT)
+        return Base64.encodeToString(encrypted, Base64.NO_WRAP)
     }
 
     private fun getOrCreateKey(): SecretKey {
@@ -307,16 +318,37 @@ class EncryptedDatabaseProvider(private val context: Context) {
             KeyProperties.KEY_ALGORITHM_AES,
             KEYSTORE_PROVIDER
         )
-        keyGenerator.init(
-            KeyGenParameterSpec.Builder(
-                KEY_ALIAS,
-                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-            )
-                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                .setKeySize(256)
-                .build()
+        val strongBoxSpec = KeyGenParameterSpec.Builder(
+            KEY_ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
         )
-        return keyGenerator.generateKey()
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(256)
+            .setIsStrongBoxBacked(true)
+            .build()
+        val teeSpec = KeyGenParameterSpec.Builder(
+            KEY_ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+        )
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(256)
+            .build()
+
+        return try {
+            keyGenerator.init(strongBoxSpec)
+            secureStorageHardwareBacked = true
+            keyGenerator.generateKey()
+        } catch (e: StrongBoxUnavailableException) {
+            // H-04: StrongBox not present on this device. Fall back to a TEE-bound
+            // key rather than refusing to store data (which would be a self-inflicted
+            // denial of service). The weaker protection level is flagged via
+            // [secureStorageHardwareBacked].
+            SecureLog.w("EncryptedDatabaseProvider", "StrongBox unavailable; using TEE-backed key", e)
+            keyGenerator.init(teeSpec)
+            secureStorageHardwareBacked = false
+            keyGenerator.generateKey()
+        }
     }
 }

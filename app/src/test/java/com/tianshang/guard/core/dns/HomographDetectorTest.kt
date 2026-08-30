@@ -81,4 +81,51 @@ class HomographDetectorTest : BaseUnitTest() {
         val result = HomographDetector.detect(domain)
         Assert.assertTrue(result is HomographResult.Detected)
     }
+
+    // ── M-03 方案 X: brand-aware assess() ─────────────────────
+
+    @Test
+    fun `assess blocks brand-similar homograph with 2+ confusables`() {
+        val brands = listOf("paypal.com")
+        val cyrA = '\u0430' // Cyrillic 'а' -> 'a'
+        // pаypаl.com normalizes to paypal.com (2 confusables, brand-similar) -> block.
+        val domain = "p${cyrA}yp${cyrA}l.com"
+        val result = HomographDetector.assess(domain, brands)
+        Assert.assertTrue("expected Detected but was $result", result is HomographResult.Detected)
+        Assert.assertEquals(HomographType.VISUAL_SPOOFING, (result as HomographResult.Detected).type)
+    }
+
+    @Test
+    fun `assess does not block non-brand confusable domain`() {
+        val brands = listOf("paypal.com")
+        val cyrA = '\u0430'
+        // Confusable chars but not similar to any known brand -> Suspicious, not blocked.
+        val domain = "zz${cyrA}zz${cyrA}zz.com"
+        val result = HomographDetector.assess(domain, brands)
+        Assert.assertTrue("expected Suspicious but was $result", result is HomographResult.Suspicious)
+    }
+
+    @Test
+    fun `assess does not block single-confusable brand-lookalike`() {
+        val brands = listOf("paypal.com")
+        val cyrA = '\u0430'
+        // Only one confusable char -> not enough to hard-block.
+        val domain = "p${cyrA}ypal.com"
+        val result = HomographDetector.assess(domain, brands)
+        Assert.assertTrue("expected Suspicious but was $result", result is HomographResult.Suspicious)
+    }
+
+    @Test
+    fun `assess returns Clean for ASCII domain`() {
+        val result = HomographDetector.assess("google.com", listOf("google.com"))
+        Assert.assertTrue(result is HomographResult.Clean)
+    }
+
+    @Test
+    fun `assess still blocks suspicious punycode`() {
+        val domain = "xn--pple-43d.com"
+        val result = HomographDetector.assess(domain, emptyList())
+        Assert.assertTrue(result is HomographResult.Detected)
+        Assert.assertEquals(HomographType.PUNYCODE_SPOOFING, (result as HomographResult.Detected).type)
+    }
 }

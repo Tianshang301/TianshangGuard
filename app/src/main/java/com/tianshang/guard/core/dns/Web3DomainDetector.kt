@@ -22,35 +22,30 @@ class Web3DomainDetector {
         ".bnb", ".arb", ".polygon", ".op"
     )
 
-    private val knownWeb3Tlds = (ensSuffixes + udSuffixes + sidSuffixes).toSet()
+    /**
+     * Extract the registrable domain (right-most label + the label before it) when
+     * the TLD is a known Web3 suffix. e.g. "legit.com.evil.eth" -> ("ENS", "evil.eth")
+     * so nested subdomains cannot hide the real Web3 name (M-02).
+     * Returns null when the domain is not a Web3 domain.
+     */
+    private fun web3Registrable(lower: String): Pair<Web3Provider, String>? {
+        val labels = lower.split('.')
+        if (labels.size < 2) return null
+        val tld = labels.last()
+        val provider = when {
+            tld in ensSuffixes.map { it.removePrefix(".") } -> Web3Provider.ENS
+            tld in udSuffixes.map { it.removePrefix(".") } -> Web3Provider.UNSTOPPABLE
+            tld in sidSuffixes.map { it.removePrefix(".") } -> Web3Provider.SID
+            else -> null
+        } ?: return null
+        val name = "${labels[labels.size - 2]}.$tld"
+        return provider to name
+    }
 
     fun detect(domain: String): Web3DomainResult {
         val lower = domain.lowercase().trim()
-        for (suffix in ensSuffixes) {
-            if (lower.endsWith(suffix)) {
-                return Web3DomainResult.Detected(
-                    provider = Web3Provider.ENS,
-                    resolvedName = lower.removeSuffix(suffix)
-                )
-            }
-        }
-        for (suffix in udSuffixes) {
-            if (lower.endsWith(suffix)) {
-                return Web3DomainResult.Detected(
-                    provider = Web3Provider.UNSTOPPABLE,
-                    resolvedName = lower.removeSuffix(suffix)
-                )
-            }
-        }
-        for (suffix in sidSuffixes) {
-            if (lower.endsWith(suffix)) {
-                return Web3DomainResult.Detected(
-                    provider = Web3Provider.SID,
-                    resolvedName = lower.removeSuffix(suffix)
-                )
-            }
-        }
-        return Web3DomainResult.NotWeb3
+        val reg = web3Registrable(lower) ?: return Web3DomainResult.NotWeb3
+        return Web3DomainResult.Detected(provider = reg.first, resolvedName = reg.second)
     }
 
     fun isWeb3Domain(domain: String): Boolean {
@@ -59,13 +54,14 @@ class Web3DomainDetector {
 
     fun getRiskLevel(domain: String): Float {
         val lower = domain.lowercase().trim()
+        val reg = web3Registrable(lower) ?: return 0.0f
         return when {
-            lower.endsWith(".eth") -> 0.6f
-            lower.endsWith(".crypto") || lower.endsWith(".nft") -> 0.7f
-            lower.endsWith(".wallet") -> 0.8f
-            lower.endsWith(".x") || lower.endsWith(".888") -> 0.75f
-            lower.endsWith(".bitcoin") || lower.endsWith(".blockchain") -> 0.8f
-            sidSuffixes.any { lower.endsWith(it) } -> 0.5f
+            reg.second.endsWith(".eth") -> 0.6f
+            reg.second.endsWith(".crypto") || reg.second.endsWith(".nft") -> 0.7f
+            reg.second.endsWith(".wallet") -> 0.8f
+            reg.second.endsWith(".x") || reg.second.endsWith(".888") -> 0.75f
+            reg.second.endsWith(".bitcoin") || reg.second.endsWith(".blockchain") -> 0.8f
+            sidSuffixes.any { reg.second.endsWith(it) } -> 0.5f
             else -> 0.5f
         }
     }

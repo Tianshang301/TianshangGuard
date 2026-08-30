@@ -9,6 +9,7 @@ import com.tianshang.guard.core.dns.DnsEngine
 import com.tianshang.guard.core.monitor.ScreenShareMonitor
 import com.tianshang.guard.core.optimizer.BatteryOptimizer
 import com.tianshang.guard.core.feedback.FeedbackEngine
+import com.tianshang.guard.core.update.RuleUpdateInteractor
 import com.tianshang.guard.data.local.GuardPreferences
 import com.tianshang.guard.data.repository.AlertRepository
 import com.tianshang.guard.data.repository.RuleRepository
@@ -17,14 +18,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-
 class SettingsViewModel(
     private val prefs: GuardPreferences,
     private val dnsEngine: DnsEngine,
     private val alertRepository: AlertRepository,
     private val ruleRepository: RuleRepository,
     private val monitor: ScreenShareMonitor,
-    private val feedbackEngine: FeedbackEngine
+    private val feedbackEngine: FeedbackEngine,
+    private val ruleUpdateInteractor: RuleUpdateInteractor
 ) : ViewModel() {
 
     val vpnAutoStart: StateFlow<Boolean> = prefs.vpnAutoStart.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
@@ -34,6 +35,7 @@ class SettingsViewModel(
     val vibrateAlert: StateFlow<Boolean> = prefs.vibrateAlert.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val smsMonitor: StateFlow<Boolean> = prefs.smsMonitor.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     val language: StateFlow<String> = prefs.language.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "system")
+    val visitHistoryEnabled: StateFlow<Boolean> = prefs.visitHistoryEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     fun setVpnAutoStart(enabled: Boolean) = viewModelScope.launch { prefs.setVpnAutoStart(enabled) }
     fun setBehaviorMonitor(enabled: Boolean) = viewModelScope.launch {
@@ -44,6 +46,7 @@ class SettingsViewModel(
     fun setSoundAlert(enabled: Boolean) = viewModelScope.launch { prefs.setSoundAlert(enabled) }
     fun setVibrateAlert(enabled: Boolean) = viewModelScope.launch { prefs.setVibrateAlert(enabled) }
     fun setSmsMonitor(enabled: Boolean) = viewModelScope.launch { prefs.setSmsMonitor(enabled) }
+    fun setVisitHistoryEnabled(enabled: Boolean) = viewModelScope.launch { prefs.setVisitHistoryEnabled(enabled) }
     fun setLanguage(language: String, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             prefs.setLanguage(language)
@@ -102,7 +105,10 @@ class SettingsViewModel(
     }
 
     fun checkRuleUpdates() = viewModelScope.launch {
-        dnsEngine.start()
+        // H-03: previously this mistakenly called dnsEngine.start(); it must
+        // trigger the (signed) remote rule update which also refreshes the DNS
+        // filters via RuleUpdateInteractor.
+        ruleUpdateInteractor.execute()
     }
 
     fun openBatterySettings(context: Context) {

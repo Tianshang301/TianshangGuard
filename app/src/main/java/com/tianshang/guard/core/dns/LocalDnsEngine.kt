@@ -42,19 +42,33 @@ class LocalDnsEngine(
         val isWhitelisted = runBlocking { ruleRepository.isWhitelisted(domain) }
         if (isWhitelisted) {
             // Still check for homograph attacks even on whitelisted domains
-            val homographResult = homographDetector.detect(domain)
-            if (homographResult is HomographResult.Detected) {
-                alertEngine.showSuspiciousDomainWarning(domain, 0.95f)
-                return DnsResult.Block(BlockReason.SUSPICIOUS)
+            val homographResult = homographDetector.assess(domain, cachedKnownDomains)
+            when (homographResult) {
+                is HomographResult.Detected -> {
+                    alertEngine.showSuspiciousDomainWarning(domain, 0.95f)
+                    return DnsResult.Block(BlockReason.SUSPICIOUS)
+                }
+                is HomographResult.Suspicious -> {
+                    // M-03: warn but do not silently block legitimate IDN domains.
+                    alertEngine.showSuspiciousDomainWarning(domain, 0.5f)
+                }
+                is HomographResult.Clean -> {}
             }
             alertEngine.notifyVisited(domain)
             return DnsResult.Allow
         }
 
-        val homographResult = homographDetector.detect(domain)
-        if (homographResult is HomographResult.Detected) {
-            alertEngine.showSuspiciousDomainWarning(domain, 0.95f)
-            return DnsResult.Block(BlockReason.SUSPICIOUS)
+        val homographResult = homographDetector.assess(domain, cachedKnownDomains)
+        when (homographResult) {
+            is HomographResult.Detected -> {
+                alertEngine.showSuspiciousDomainWarning(domain, 0.95f)
+                return DnsResult.Block(BlockReason.SUSPICIOUS)
+            }
+            is HomographResult.Suspicious -> {
+                // M-03: not brand-similar -> needs confirmation, not silent block.
+                alertEngine.showSuspiciousDomainWarning(domain, 0.5f)
+            }
+            is HomographResult.Clean -> {}
         }
 
         if (bloomFilter.mightContain(domain)) {
@@ -137,6 +151,11 @@ class LocalDnsEngine(
     }
 
     override suspend fun start() {
+        reloadFilter()
+        initialized = true
+    }
+
+    override suspend fun reloadFilter() {
         val allDomains = ruleRepository.getKnownDomains()
         val newFilter = AdaptiveBloomFilter(
             expectedItems = if (allDomains.size * 2 > 100_000) allDomains.size * 2 else 100_000,
@@ -149,7 +168,6 @@ class LocalDnsEngine(
             cachedKnownDomains = allDomains
             lastDomainCacheUpdate = System.currentTimeMillis()
             rebuildBkTree()
-            initialized = true
         }
     }
 

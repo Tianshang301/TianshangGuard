@@ -80,6 +80,9 @@ release.jks
 app/release.jks
 keystore.properties
 
+# Rule-set signing private key (DO NOT COMMIT) — release signer only
+scripts/rules_signing_key.pem
+
 # Java heap dumps
 java_pid*.hprof
 

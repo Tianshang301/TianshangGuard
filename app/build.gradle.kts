@@ -46,15 +46,15 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("release")
             lint {
-                checkReleaseBuilds = false
+                checkReleaseBuilds = true
             }
         }
     }
@@ -150,6 +150,8 @@ dependencies {
     implementation(libs.camerax.view)
 
     implementation(libs.zxing.core)
+
+    implementation(libs.bouncycastle)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

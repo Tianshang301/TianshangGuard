@@ -94,7 +94,9 @@ class FeedbackEngine(
     }
 
     private fun computeTextHash(text: String): String {
-        val md = MessageDigest.getInstance("MD5")
+        // M-04: MD5 collision allows a different SMS body to be treated as an
+        // already-whitelisted false positive. Use SHA-256 instead.
+        val md = MessageDigest.getInstance("SHA-256")
         val digest = md.digest(text.toByteArray(Charsets.UTF_8))
         return digest.joinToString("") { "%02x".format(it) }
     }

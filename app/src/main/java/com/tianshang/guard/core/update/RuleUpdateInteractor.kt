@@ -6,6 +6,7 @@ import com.tianshang.guard.data.local.database.DomainDao
 import com.tianshang.guard.data.local.database.DomainEntity
 import com.tianshang.guard.data.remote.GithubRulesApi
 import com.tianshang.guard.data.remote.RulesDiff
+import com.tianshang.guard.core.dns.DnsEngine
 import com.tianshang.guard.core.util.SecureLog
 import kotlinx.coroutines.flow.first
 
@@ -13,11 +14,15 @@ class RuleUpdateInteractor(
     private val prefs: GuardPreferences,
     private val api: GithubRulesApi,
     private val domainDao: DomainDao,
-    private val signatureVerifier: SignatureVerifier
+    private val signatureVerifier: SignatureVerifier,
+    private val dnsEngine: DnsEngine
 ) {
     companion object {
         private val DOMAIN_REGEX = Regex("^(?!-)[a-zA-Z0-9-]{1,63}(?<!-)(\\.[a-zA-Z0-9-]{1,63})*\\.[a-zA-Z]{2,}$")
         private const val MAX_RULES_PER_UPDATE = 10000
+        // Reject updates whose signature timestamp is older than ~30 days to bound
+        // clock-skew tolerance while still preventing stale-payload replay.
+        private const val MAX_TIMESTAMP_SKEW_MS = 30L * 24 * 60 * 60 * 1000
     }
 
     suspend fun execute(): Boolean {
@@ -40,8 +45,27 @@ class RuleUpdateInteractor(
                 return false
             }
 
+            val now = System.currentTimeMillis()
+            if (diff.timestamp <= 0 || diff.timestamp > now + MAX_TIMESTAMP_SKEW_MS) {
+                SecureLog.e("RuleUpdateInteractor", "Rule update timestamp out of bounds, rejecting")
+                return false
+            }
+            val lastTs = prefs.rulesSignatureTimestamp.first()
+            if (diff.timestamp <= lastTs) {
+                SecureLog.e("RuleUpdateInteractor", "Rule update timestamp not newer than last accepted, rejecting (replay)")
+                return false
+            }
+
             applyDiff(domainDao, diff)
             prefs.setRulesVersion(remoteVersion.version)
+            prefs.setRulesSignatureTimestamp(diff.timestamp)
+            // H-03: refresh the in-memory DNS filters so the newly added/removed
+            // domains take effect within the running VPN session.
+            try {
+                dnsEngine.reloadFilter()
+            } catch (e: Exception) {
+                SecureLog.e("RuleUpdateInteractor", "Failed to refresh DNS filter after update", e)
+            }
             SecureLog.i("RuleUpdateInteractor", "Rules updated to ${remoteVersion.version}")
             true
         } catch (e: Exception) {
