@@ -4,6 +4,7 @@ import android.app.Application
 import com.tianshang.guard.core.ml.MlEngine
 import com.tianshang.guard.core.ml.ModelType
 import com.tianshang.guard.core.retrieval.KnowledgeBase
+import com.tianshang.guard.core.update.RuleUpdateScheduler
 import com.tianshang.guard.data.repository.RuleRepository
 import com.tianshang.guard.di.appModule
 import org.json.JSONArray
@@ -27,6 +28,9 @@ class GuardApplication : Application() {
         }
         loadOnnxModel()
         loadBuiltinRules()
+        // C-01: make the (signature-verified) remote rule update reachable at
+        // runtime — the worker previously existed but was never scheduled.
+        RuleUpdateScheduler.schedule(this)
         android.util.Log.i("GuardApp", "onCreate done")
     }
 

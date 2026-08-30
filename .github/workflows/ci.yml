@@ -94,6 +94,63 @@ jobs:
           name: lint-results
           path: app/build/reports/lint-results*
 
+  verify-pins:
+    name: Verify Cert Pins vs Live Chain
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      # H-05: verify the SPKI pins declared in network_security_config.xml actually
+      # match the live certificate chain of each pinned host. A mismatch means rule
+      # downloads would fail closed on real devices, so the build must fail.
+      # GitHub endpoints: hard-required. cloudflare-dns.com: some networks block it,
+      # so connection failure is tolerated (DoH falls back to AliDNS), but if it
+      # connects the pin MUST match.
+      - name: Compare pinned SPKI to live chain
+        run: |
+          set -euo pipefail
+          check_pin() {
+            local host="$1"; shift
+            local pin
+            pin=$(echo | timeout 15 openssl s_client -connect "$host:443" -servername "$host" 2>/dev/null \
+              | openssl x509 -pubkey -noout 2>/dev/null \
+              | openssl pkey -pubin -outform der 2>/dev/null \
+              | openssl dgst -sha256 -binary 2>/dev/null \
+              | openssl base64 -A 2>/dev/null) || true
+            if [ -z "$pin" ]; then
+              echo "SKIP $host: could not fetch live chain (network blocked)"
+              return 1
+            fi
+            for expected in "$@"; do
+              if [ "$pin" = "$expected" ]; then
+                echo "OK   $host: pin matches ($pin)"
+                return 0
+              fi
+            done
+            echo "FAIL $host: live SPKI=$pin not in configured pin set"
+            return 2
+          }
+          rc=0
+          check_pin raw.githubusercontent.com \
+            "u5HUV+53eJaqAZQekPBc2vbRb9LvpJzlK8dhGLIPF+o=" \
+            "k2v657xBsOVe1PQRwWoDp9Fxfi2I4l4GlRnNfCeIDrI=" \
+            "RRM1dGqnDFsCJXBTHky16vi1obOlCgFFn/yOhI/y+ho=" || rc=$?
+          check_pin api.github.com \
+            "cgAMm7z20VINmtPjImmTrEl882gSBr0fIhdLTtHveyY=" \
+            "k2v657xBsOVe1PQRwWoDp9Fxfi2I4l4GlRnNfCeIDrI=" \
+            "RRM1dGqnDFsCJXBTHky16vi1obOlCgFFn/yOhI/y+ho=" || rc=$?
+          # Cloudflare: tolerant of network-blocked environments.
+          check_pin cloudflare-dns.com \
+            "yio0sMlhW0kS4fJo1pJl0tF6TvG3EKGY0pmMgkGnVY=" \
+            "i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY=" || true
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::certificate pin mismatch detected"
+            exit "$rc"
+          fi
+
   build:
     name: Build ${{ matrix.flavor }} Release
     runs-on: ubuntu-latest
@@ -101,7 +158,7 @@ jobs:
     permissions:
       contents: read
     if: github.event_name == 'push' && github.ref_name == 'main'
-    needs: [unit-test, lint]
+    needs: [unit-test, lint, verify-pins]
     strategy:
       fail-fast: false
       matrix:
@@ -122,10 +179,12 @@ jobs:
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: |
-          mkdir -p app
-          printf '%s' "$KEYSTORE_B64" > /tmp/keystore.b64
-          base64 -d /tmp/keystore.b64 > app/release.jks
-          rm -f /tmp/keystore.b64
+          # H-07: decode OUTSIDE the repo checkout (RUNNER_TEMP) and restrict perms,
+          # so the signing key never sits in the working tree.
+          printf '%s' "$KEYSTORE_B64" > "$RUNNER_TEMP/keystore.b64"
+          base64 -d "$RUNNER_TEMP/keystore.b64" > "$RUNNER_TEMP/release.jks"
+          rm -f "$RUNNER_TEMP/keystore.b64"
+          chmod 600 "$RUNNER_TEMP/release.jks"
 
       - name: Generate keystore.properties
         env:
@@ -135,8 +194,9 @@ jobs:
           storePassword=$KEYSTORE_PASS
           keyPassword=$KEYSTORE_PASS
           keyAlias=guard
-          storeFile=release.jks
+          storeFile=$RUNNER_TEMP/release.jks
           EOF
+          chmod 600 keystore.properties
 
       - name: Build ${{ matrix.flavor }} Release
         run: |
@@ -147,3 +207,8 @@ jobs:
         with:
           name: app-${{ matrix.flavor }}-release
           path: app/build/outputs/apk/${{ matrix.flavor }}/release/app-${{ matrix.flavor }}-release.apk
+
+      - name: Clean up signing material
+        if: always()
+        run: |
+          rm -f keystore.properties "$RUNNER_TEMP/release.jks" "$RUNNER_TEMP/keystore.b64"
