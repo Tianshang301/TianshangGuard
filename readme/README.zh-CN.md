@@ -28,14 +28,14 @@
 | **QR 码钓鱼拦截** | 内置 ZXing 扫码器 + CameraX 预览 + DNS 引擎实时 URL 风险分析 |
 | **Web3 域名检测** | ENS `.eth`、Unstoppable `.crypto`、SID `.bnb` — 纯规则检测，无需 ML |
 | **BPE 子词分词器** | 基于词表的子词分词器，ByteTokenizer 兜底 — 更好的中文处理能力 |
-| **行为监控** | 检测屏幕共享 + 银行应用组合，阻断社会工程学攻击 |
+| **行为监控** | 检测屏幕共享 + 银行应用组合，基于 UsageStatsManager、进程 UID 身份校验与 API 34+ MediaProjection 信号，阻断社会工程学攻击 |
 | **分级预警** | 静默记录 → 横幅提示 → 弹窗确认 → 全屏阻断，含冷却和频率限制 |
 | **反馈引擎** | 用户标记（钓鱼/误报）融入 BM25 检索和特征预测，实现自适应检测 |
 | **BM25 知识库** | 预计算反诈教育内容检索索引 |
 | **特征预测** | 24 维特征提取 + 在线预测 + 自适应阈值校准 |
-| **规则更新** | 远程拉取黑白名单，SHA-256 签名验证 |
-| **数据库加密** | SQLCipher + Android Keystore 本地数据加密 |
-| **DNS 隐私** | DNS over HTTPS（Cloudflare DoH）+ 证书锁定 + UDP 降级 |
+| **规则更新** | 远程拉取黑白名单，**Ed25519 公钥签名验证**（防重放、规范化负载） |
+| **数据库加密** | SQLCipher + Android Keystore（StrongBox/TEE），原生库不可用时 **fail-closed** 内存回退，迁移旧文件安全擦除 |
+| **DNS 隐私** | DNS over HTTPS（Cloudflare + AliDNS 双端点）+ 证书锁定，**fail-closed（无明文 UDP 降级）** |
 | **电池优化** | 7 大品牌（华为/小米/OPPO/vivo/魅族/三星/荣耀）自动适配 |
 | **多语言支持** | 中文（zh）、英文（en）、统一版（自动检测）三种构建变体 |
 
@@ -57,15 +57,28 @@
 - **纯规则实现**：零 ML 依赖，轻量检测
 
 ### SMS 模型 v5 — 100% 真实数据训练
-- **v5 数据集**：8,848 条真实中文 SMS — FBS 诈骗短信（4,943）+ mudou_spam（6,899）作为钓鱼样本，mudou_ham（4,424）作为合法样本
+- **v5 数据集**：8,848 条真实中文 SMS（50/50 平衡）— 清洗后 FBS（6,948）+ mudou_spam + mudou_ham（1,900）
 - **30 轮训练**：BytePhishingTransformer（120K 参数），FocalLoss(alpha=0.75, gamma=2.0)，batch=64
 - **校准阈值**：SAFE < 0.30，SUSPICIOUS 0.30–0.59，DANGEROUS ≥ 0.59（v5 验证集：AUC=0.9672，F1=0.9206）
 - **无合成数据**：仅使用真实 FBS + mudou SMS 数据训练，无模板生成钓鱼样本
 
 ### 安全基础设施
-- **数据库加密**：SQLCipher v4.5.4 + Android Keystore AES-GCM 密码保护
-- **自动迁移**：首次启动时明文字库透明迁移至加密格式
+- **数据库加密**：SQLCipher v4.5.4 + Android Keystore AES-GCM 密码保护（StrongBox/TEE）
+- **Fail-closed 加密**：SQLCipher 原生库不可用时，数据回退到易失性**内存库**并展示 UI 警告（绝不落盘明文）
+- **自动迁移**：首次启动时明文字库透明迁移至加密格式；旧明文文件删除前先**安全覆写**
+- **Ed25519 规则签名**：远程规则更新以内嵌公钥验签（规范化负载、时间戳 + 防重放）
 - **安全模块测试**：6 个 androidTest 覆盖加密、解密、持久化、迁移、篡改检测
+
+### 安全审计修复（2026-08）
+
+2026-08-28 全维度源码安全审计发现 20 项问题（3 Critical / 7 High / 6 Medium / 4 Low），已在 `main` 全部修复：
+
+- **C-01** — 无密钥 SHA-256 规则"签名" → **Ed25519 公钥验签**，规范化负载 + 防重放
+- **C-02** — DoH 明文 UDP 降级 → **fail-closed**（多端点 DoH，失败返回 SERVFAIL，DNS 响应问题节校验）
+- **C-03** — SQLCipher 静默明文回退 → **fail-closed** 易失性内存库 + UI 警告
+- **H-01..H-07** — 按模型独立 ML 回退、VPN 有界并发 + 限流、规则/过滤器同步、StrongBox/TEE 密钥、多 SPKI 证书固定、release R8 混淆 + lint、CI Actions SHA 固定 + 最小权限
+- **M-01..M-06** — 同形字品牌感知检测、Web3 注册域解析、屏幕共享 UID/MediaProjection 信号、反馈 SHA-256 哈希、训练脚本加固（`weights_only`、回环 + token 鉴权）、wrapper SHA-256 + 备份排除
+- **L-01..L-04** — 纯 DoH 保活、访问记录留存开关 + 30 天清理、URL 规范化修复、死代码移除
 
 ### Bug 修复与稳定性
 - **59 个安全审计问题识别**：修复 26 个 P0/P1（12 Critical + 14 High），33 个 P2 延至 v1.6.0
@@ -119,7 +132,7 @@ graph TB
         W[(Room DB<br/>SQLCipher 加密)]
         X[ONNX 模型<br/>URL + SMS + 英文]
         Y[BPE 词表<br/>tokenizer/bpe_tokenizer_vocab.json]
-        Z[远程规则<br/>GitHub + SHA-256 签名]
+        Z[远程规则<br/>GitHub + Ed25519 签名]
     end
 
     A --> H
@@ -245,9 +258,9 @@ adb install app/build/outputs/apk/zh/release/app-zh-release.apk
 
 | 版本 | 语言 | 包含模型 | 状态 |
 |------|------|----------|------|
-| [v1.5.0-中文版](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.5.0-chinese) | 中文 UI | URL + SMS | ✅ 已发布 |
-| [v1.5.0-英文版](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.5.0-english) | 英文 UI | URL + 英文 | ✅ 已发布 |
-| [v1.5.0-统一版](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.5.0-unified) | 自动检测（设置中可切换语言） | URL + SMS + 英文 | ✅ 已发布 |
+| [v1.5.0](https://github.com/Tianshang301/TianshangGuard/releases/tag/v1.5.0) | 自动检测（设置中可切换语言） | URL + SMS + 中文 + 英文 | ✅ 已发布 |
+| 源码构建（zh） | 中文 UI | URL + SMS | 使用 `./gradlew assembleZhRelease` 构建 |
+| 源码构建（en） | 英文 UI | URL + 英文 | 使用 `./gradlew assembleEnRelease` 构建 |
 
 ---
 
@@ -257,10 +270,11 @@ adb install app/build/outputs/apk/zh/release/app-zh-release.apk
 
 | 模型 | 文件 | 大小 | 参数量 | 训练数据 | 性能 |
 |------|------|------|--------|----------|------|
-| URL 检测 | url_phishing.onnx | 105 KB | 120,321 | PhiUSIIL（23.5 万条） | AUC=0.9942 |
-| SMS 诈骗 | sms_phishing.onnx | 319 KB | 120,321 | v5 真实 SMS：FBS（4,943）+ mudou_spam（6,899）钓鱼，mudou_ham（4,424）合法 | AUC=0.9672（v5 验证集），F1=0.9206 |
-| 英文文本 | english_phishing.onnx | 312 KB | 120,321 | UCI + NCSU + IMC25 | 待测试 |
-| 量化检测 | phishing_detector_quant.onnx | 1022 KB | 120,321 | PhiUSIIL（INT8 量化） | 待测试 |
+| URL 检测 | url_phishing.onnx | 319 KB | 120,321 | PhiUSIIL（23.5 万条，路径无关增强） | AUC=0.9942 |
+| SMS 诈骗 | sms_phishing.onnx | 319 KB | 120,321 | v5 真实 SMS：清洗后 FBS（6,948）+ mudou（1,900），50/50 平衡 | AUC=0.9672，阈值 0.59 时 F1=0.9206 |
+| 中文文本 | chinese_phishing.onnx | 319 KB | 120,321 | ChiFraud（8.2 万条清洗 + 平衡） | AUC=0.9492 |
+| 英文文本 | english_phishing.onnx | 319 KB | 120,321 | UCI + NCSU + IMC25 | 待测试 |
+| PhishTector 旧版 | phishing_detector_quant.onnx | 1022 KB | 644,865 | ChiFraud（FP32，64.5 万参数，历史版本） | 历史 |
 
 ### 超参数
 
@@ -313,7 +327,7 @@ python calibrate_sms_threshold.py
 
 当前部署阈值：
 - **SAFE**: 分数 < 0.30
-- **SUSPICIOUS**: 0.30 – 0.59（静默标记区，可捕获约 99% 钓鱼，FPR 较高）
+- **SUSPICIOUS**: 0.30 – 0.59（静默标记区，可捕获约 92.9% 钓鱼，FPR 8.7%）
 - **DANGEROUS**: ≥ 0.59（Recall=92.9%，FPR=8.7%，F1=0.9206）
 
 > `RiskLevel.toScore()` 将离散等级映射为连续中点值（SAFE→0.25，SUSPICIOUS→0.70，DANGEROUS→0.95），避免边界值升级问题。
@@ -349,7 +363,7 @@ TianshangGuard/
 │   │   │   │   ├── retrieval/     # BM25 检索、知识库
 │   │   │   │   ├── rl/            # 特征提取（24维）、特征预测
 │   │   │   │   ├── calibration/   # 自适应阈值校准
-│   │   │   │   ├── update/        # 规则更新（SHA-256 签名验证）
+│   │   │   │   ├── update/        # 规则更新（Ed25519 签名验证）
 │   │   │   │   ├── optimizer/     # 电池优化（7 品牌）
 │   │   │   │   ├── quish/         # QuishGuardEngine、QrCodeDecoder（ZXing QR 分析）
 │   │   │   │   ├── telemetry/     # 性能追踪
@@ -359,14 +373,14 @@ TianshangGuard/
 │   │   │   │   │   ├── database/   # GuardDatabase (Room), DAO, Entity
 │   │   │   │   │   ├── security/   # EncryptedDatabaseProvider (SQLCipher)
 │   │   │   │   │   └── GuardPreferences.kt (DataStore)
-│   │   │   │   ├── remote/        # GitHub 规则 API、PhishTank API
+│   │   │   │   ├── remote/        # GitHub 规则 API
 │   │   │   │   └── repository/    # 数据仓库
 │   │   │   ├── domain/            # 7 个 UseCase（新增 InterceptQrUseCase）
 │   │   │   ├── service/           # VPN 服务（DoH）、前台服务、开机启动、短信接收、QrScanTileService
 │   │   │   ├── ui/                # Compose UI（主页、短信、统计、设置、预警、扫码、引导、主题）
 │   │   │   └── di/                # Koin 依赖注入
 │   │   ├── assets/
-│   │   │   ├── model/             # 4 个 ONNX 模型文件（+1 自动备份）
+│   │   │   ├── model/             # 5 个 ONNX 模型文件（+1 自动备份）
 │   │   │   ├── tokenizer/         # BPE 词表
 │   │   │   ├── knowledge_base/    # BM25 预计算索引
 │   │   │   ├── rules/             # 内置黑白名单和关键词规则
@@ -375,7 +389,7 @@ TianshangGuard/
 │   ├── zh/                        # 中文变体
 │   ├── en/                        # 英文变体
 │   ├── unified/                   # 统一版变体（自动检测语言）
-│   ├── test/                      # 单元测试（25 个文件，168 个测试）
+│   ├── test/                      # 单元测试（23 个文件，175 个测试）
 │   └── androidTest/               # 插装测试（4 个文件，26 个测试）
 ├── scripts/
 │   ├── train_phishing_model.py    # 主训练脚本
@@ -398,9 +412,9 @@ TianshangGuard/
 ### 核心承诺
 
 - **纯本地分析**：所有推理通过 ONNX Runtime + NNAPI 硬件加速在设备端完成
-- **数据库加密**：SQLCipher + Android Keystore 保护所有本地数据
-- **DNS 隐私**：DNS over HTTPS（Cloudflare DoH）+ 证书锁定 + UDP 降级
-- **规则完整性**：SHA-256 签名验证，未签名负载被拒绝
+- **数据库加密**：SQLCipher + Android Keystore（StrongBox/TEE）保护所有本地数据；原生库不可用时 fail-closed 内存回退；迁移旧明文文件安全擦除
+- **DNS 隐私**：DNS over HTTPS（Cloudflare + AliDNS 双端点）+ 证书锁定，fail-closed（无明文 UDP 降级，失败返回 SERVFAIL）
+- **规则完整性**：**Ed25519 公钥签名验证**（规范化负载 + 时间戳/防重放；未签名或被篡改的更新一律拒绝）
 - **反馈隐私**：用户标记仅本地存储，不上传
 - **特征分析本地**：24 维特征分析全部在设备端完成
 - **开源可审计**：代码完全公开，接受社区审查
@@ -411,7 +425,7 @@ TianshangGuard/
 | 权限 | 用途 |
 |------|------|
 | `BIND_VPN_SERVICE` ⚡ | VPN 拦截阻断 — 以 `<service android:permission>` 属性声明 |
-| `INTERNET` | DNS over HTTPS、GitHub 规则更新、PhishTank API |
+| `INTERNET` | DNS over HTTPS、GitHub 规则更新 |
 | `SYSTEM_ALERT_WINDOW` | 钓鱼预警悬浮窗 |
 | `PACKAGE_USAGE_STATS` | 屏幕共享 + 银行应用检测 |
 | `RECEIVE_SMS` + `READ_SMS` | 短信钓鱼分析 |
@@ -420,7 +434,7 @@ TianshangGuard/
 | `FOREGROUND_SERVICE` | 前台保活 |
 | `FOREGROUND_SERVICE_DATA_SYNC` | Android 14+ 前台服务类型声明 |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | 防止电池优化杀死服务 |
-| `ACCESS_NETWORK_STATE` | DoH 降级时的网络连通性检查 |
+| `ACCESS_NETWORK_STATE` | DoH 网络连通性检查 |
 | `VIBRATE` | 危险级别预警震动 |
 
 ### 能力边界
@@ -444,15 +458,33 @@ TianshangGuard/
 
 ## 测试
 
-### 单元测试（25 个文件，168 个测试）
+### 单元测试（23 个文件，175 个测试）
 
 | 测试文件 | 用例数 | 覆盖范围 |
 |----------|--------|----------|
 | `RuleBasedEngineTest.kt` | 8 | 关键词匹配逻辑 |
-| `HomographDetectorTest.kt` | 11 | 同形字符检测 + 拼音混淆 |
-| `AdaptiveBloomFilterTest.kt` | — | Bloom 过滤器正确性 |
-| `CooldownManagerTest.kt` | — | 预警冷却逻辑 |
-| 此外 22 个测试文件 | — | DNS、ML、BM25、特征提取、签名验证等 |
+| `HomographDetectorTest.kt` | 16 | 同形字符检测 + 拼音混淆 + 品牌感知 `assess()` |
+| `AdaptiveBloomFilterTest.kt` | 8 | Bloom 过滤器正确性 |
+| `CooldownManagerTest.kt` | 6 | 预警冷却逻辑 |
+| `BkTreeTest.kt` | 10 | BK-tree 操作 |
+| `DnsPacketHandlerTest.kt` | 15 | DNS 报文解析 + 响应校验 |
+| `DohClientTest.kt` | 2 | DoH 客户端 |
+| `BpeTokenizerTest.kt` | 9 | BPE 分词器 |
+| `ByteTokenizerTest.kt` | 9 | Byte 分词器 |
+| `OnnxMlEngineTest.kt` | 10 | ONNX 引擎 |
+| `OnnxMlEngineSpikeTest.kt` | 4 | ONNX 集成 |
+| `FeatureExtractorTest.kt` | 23 | 特征提取 |
+| `Bm25EngineTest.kt` | 8 | BM25 检索 |
+| `PerformanceTracerTest.kt` | 5 | 性能指标 |
+| `SignatureVerifierTest.kt` | 6 | Ed25519 签名验证 |
+| `FeedbackEngineTokenizerTest.kt` | 7 | 反馈分词 |
+| `GuardPreferencesTest.kt` | 1 | DataStore 偏好 |
+| `RuleRepositoryTest.kt` | 8 | 规则仓库 |
+| `RuleUpdateInteractorTest.kt` | 8 | 规则更新交互（签名 + 防重放） |
+| `AnalyzeSmsUseCaseTest.kt` | 6 | 短信分析用例 |
+| `AnalyzeWebPageUseCaseTest.kt` | 2 | 网页分析 |
+| `CheckDomainRiskUseCaseTest.kt` | 3 | 域名风险检查 |
+| `UpdateRulesUseCaseTest.kt` | 1 | 规则更新 |
 
 ### Android 插装测试（26 个测试）
 
@@ -509,7 +541,7 @@ git push origin feature/your-feature
 
 - [PhiUSIIL](https://www.kaggle.com/datasets/shashwatwork/phiusiil-phishing-url-dataset) — URL 钓鱼数据集
 - [ChiFraud](https://github.com/xuemingxxx/ChiFraud) — 中文欺诈短信数据集
-- [FBS SMS](https://www.kaggle.com/datasets/uciml/sms-spam-collection-dataset) — SMS 垃圾数据集
+- [FBS SMS](https://github.com/Cypher-Z/FBS_SMS_Dataset) — 伪基站短信数据集 (CCS'20)
 - [mudou_spam](https://huggingface.co/datasets/shaonianruntu/Spam-Message-Classification) — 中文短信分类数据集（垃圾 + 正常）
 - [ONNX Runtime](https://onnxruntime.ai/) — 端侧推理引擎
 - [PhishTank](https://www.phishtank.com/) — 钓鱼域名情报

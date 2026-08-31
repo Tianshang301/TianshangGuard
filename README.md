@@ -361,7 +361,7 @@ TianshangGuard/
 │   │   │   │   ├── retrieval/     # Bm25Engine, KnowledgeBase
 │   │   │   │   ├── rl/            # FeatureExtractor (24-dim), FeatureVector, FeatureStore, FeatureBasedPredictor
 │   │   │   │   ├── calibration/   # ThresholdCalibrator
-│   │   │   │   ├── update/        # RuleUpdateWorker (SHA-256 verified), RuleUpdateInteractor, SignatureVerifier
+│   │   │   │   ├── update/        # RuleUpdateWorker, RuleUpdateInteractor, SignatureVerifier (Ed25519)
 │   │   │   │   ├── optimizer/     # BatteryOptimizer (7 brands)
 │   │   │   │   ├── quish/         # QuishGuardEngine, QrCodeDecoder (ZXing-based QR analysis)
 │   │   │   │   ├── telemetry/     # PerformanceTracer
@@ -371,7 +371,7 @@ TianshangGuard/
 │   │   │   │   │   ├── database/  # GuardDatabase (Room), Dao, Entity
 │   │   │   │   │   ├── security/  # EncryptedDatabaseProvider (SQLCipher)
 │   │   │   │   │   └── GuardPreferences.kt (DataStore)
-│   │   │   │   ├── remote/        # GithubRulesApi, PhishTankApi
+│   │   │   │   ├── remote/        # GithubRulesApi
 │   │   │   │   └── repository/    # RuleRepository, AlertRepository
 │   │   │   ├── domain/            # 7 UseCases: AnalyzeSms, AnalyzeWebPage, CheckDomainRisk, TriggerAlert, DetectScreenSharing, UpdateRules, InterceptQr
 │   │   │   ├── service/           # GuardVpnService (DoH), ForegroundService, BootReceiver, SmsReceiver, QrScanTileService
@@ -387,7 +387,7 @@ TianshangGuard/
 │   ├── zh/                        # Chinese flavor (GuardApplication + strings.xml)
 │   ├── en/                        # English flavor
 │   ├── unified/                   # Unified flavor (auto-detect language)
-│   ├── test/                      # Unit tests (25 files, 168 tests)
+│   ├── test/                      # Unit tests (23 files, 175 tests)
 │   └── androidTest/               # Instrumentation tests (4 files, 26 tests)
 ├── scripts/
 │   ├── train_phishing_model.py    # Main training script
