@@ -155,7 +155,7 @@ graph TB
 
 ```mermaid
 flowchart LR
-    A[输入文本] --> B{BPE 分词器<br/>词表=4096}
+    A[输入文本] --> B{BPE 分词器<br/>词表=162}
     B -->|成功| C[ONNX 模型<br/>INT8 量化]
     B -->|OOV 兜底| D[ByteTokenizer<br/>UTF-8 编码]
     D --> C
@@ -279,7 +279,7 @@ adb install app/build/outputs/apk/zh/release/app-zh-release.apk
 | d_ff | 128 |
 | max_seq_len | 512 |
 | vocab_size | 256 |
-| 分词器 | BPE（词表=4096）+ Byte 兜底 |
+| 分词器 | BPE（词表=162）+ Byte 兜底 |
 
 ### 训练命令
 
@@ -382,7 +382,7 @@ TianshangGuard/
 │   ├── zh/                        # 中文变体
 │   ├── en/                        # 英文变体
 │   ├── unified/                   # 统一版变体（自动检测语言）
-│   ├── test/                      # 单元测试（23 个文件，175 个测试）
+│   ├── test/                      # 单元测试（23 个测试类 + 2 个辅助类 = 25 个文件，175 个测试）
 │   └── androidTest/               # 插装测试（4 个文件，26 个测试）
 ├── scripts/
 │   ├── train_phishing_model.py    # 主训练脚本
@@ -426,6 +426,8 @@ TianshangGuard/
 | `RECEIVE_BOOT_COMPLETED` | 开机自启防护 |
 | `FOREGROUND_SERVICE` | 前台保活 |
 | `FOREGROUND_SERVICE_DATA_SYNC` | Android 14+ 前台服务类型声明 |
+| `BROADCAST_SMS` ⚡ | 短信接收器保护 — 以 `<receiver android:permission>` 属性声明 |
+| `BIND_QUICK_SETTINGS_TILE` ⚡ | QR 扫码磁贴 — 以 `<service android:permission>` 属性声明 |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | 防止电池优化杀死服务 |
 | `ACCESS_NETWORK_STATE` | DoH 网络连通性检查 |
 | `VIBRATE` | 危险级别预警震动 |
@@ -451,7 +453,7 @@ TianshangGuard/
 
 ## 测试
 
-### 单元测试（23 个文件，175 个测试）
+### 单元测试（25 个文件：23 个测试类 + 2 个辅助类，175 个测试）
 
 | 测试文件 | 用例数 | 覆盖范围 |
 |----------|--------|----------|

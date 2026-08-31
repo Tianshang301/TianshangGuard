@@ -155,7 +155,7 @@ graph TB
 
 ```mermaid
 flowchart LR
-    A[Input Text] --> B{BPE Tokenizer<br/>vocab=4096}
+    A[Input Text] --> B{BPE Tokenizer<br/>vocab=162}
     B -->|Success| C[ONNX Model<br/>INT8 Quantized]
     B -->|OOV Fallback| D[ByteTokenizer<br/>UTF-8 Encoding]
     D --> C
@@ -166,6 +166,8 @@ flowchart LR
     C -.->|Timeout/Fail| I[Rule Engine Fallback<br/>JSON Keywords]
     I --> E
 ```
+
+> Note: The ONNX models were trained on `ByteTokenizer` (vocab=256); the shipped BPE vocabulary is a 162-token experimental artifact (`assets/tokenizer/bpe_tokenizer_vocab.json`) and is not part of the production inference path.
 
 ### QR Code Scanning & Protection Flow
 
@@ -279,7 +281,7 @@ The project includes BytePhishingTransformer models:
 | d_ff | 128 |
 | max_seq_len | 512 |
 | vocab_size | 256 |
-| tokenizer | BPE (vocab=4096) + Byte fallback |
+| tokenizer | BPE (vocab=162) + Byte fallback |
 
 ### Training Commands
 
@@ -380,7 +382,7 @@ TianshangGuard/
 │   ├── zh/                        # Chinese flavor (GuardApplication + strings.xml)
 │   ├── en/                        # English flavor
 │   ├── unified/                   # Unified flavor (auto-detect language)
-│   ├── test/                      # Unit tests (23 files, 175 tests)
+│   ├── test/                      # Unit tests (23 test classes + 2 helpers = 25 files, 175 tests)
 │   └── androidTest/               # Instrumentation tests (4 files, 26 tests)
 ├── scripts/
 │   ├── train_phishing_model.py    # Main training script
@@ -424,6 +426,8 @@ TianshangGuard/
 | `RECEIVE_BOOT_COMPLETED` | Auto-start protection on boot |
 | `FOREGROUND_SERVICE` | Keep-alive service for continuous protection |
 | `FOREGROUND_SERVICE_DATA_SYNC` | Android 14+ foreground service type declaration |
+| `BROADCAST_SMS` ⚡ | SMS broadcast receiver protection — set as `<receiver android:permission>` attribute |
+| `BIND_QUICK_SETTINGS_TILE` ⚡ | QR scan Quick Settings tile — set as `<service android:permission>` attribute |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Prevent battery optimization from killing service |
 | `ACCESS_NETWORK_STATE` | Network connectivity checks for DoH fallback |
 | `VIBRATE` | Vibrations for dangerous-level alerts |
@@ -449,7 +453,7 @@ TianshangGuard/
 
 ## Tests
 
-### Unit Tests (23 files, 175 tests)
+### Unit Tests (25 files: 23 test classes + 2 helpers, 175 tests)
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
