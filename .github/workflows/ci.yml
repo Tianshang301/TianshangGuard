@@ -106,6 +106,10 @@ jobs:
       # H-05: verify the SPKI pins declared in network_security_config.xml actually
       # match the live certificate chain of each pinned host. A mismatch means rule
       # downloads would fail closed on real devices, so the build must fail.
+      # Whole-chain check: GitHub/CDN edges rotate LEAF certs per region, so any
+      # certificate in the presented chain (leaf + intermediates) may match; this
+      # mirrors Android's network_security_config <pin-set> "any pin matches any
+      # chain cert" semantics instead of failing on a single observed leaf.
       # GitHub endpoints: hard-required. cloudflare-dns.com: some networks block it,
       # so connection failure is tolerated (DoH falls back to AliDNS), but if it
       # connects the pin MUST match.
@@ -114,38 +118,54 @@ jobs:
           set -euo pipefail
           check_pin() {
             local host="$1"; shift
-            local pin
-            pin=$(echo | timeout 15 openssl s_client -connect "$host:443" -servername "$host" 2>/dev/null \
-              | openssl x509 -pubkey -noout 2>/dev/null \
-              | openssl pkey -pubin -outform der 2>/dev/null \
-              | openssl dgst -sha256 -binary 2>/dev/null \
-              | openssl base64 -A 2>/dev/null) || true
-            if [ -z "$pin" ]; then
+            local tmpdir
+            tmpdir=$(mktemp -d)
+            if ! echo | timeout 15 openssl s_client -connect "$host:443" -servername "$host" -showcerts 2>/dev/null > "$tmpdir/chain.pem"; then
+              rm -rf "$tmpdir"
               echo "SKIP $host: could not fetch live chain (network blocked)"
               return 1
             fi
-            for expected in "$@"; do
-              if [ "$pin" = "$expected" ]; then
-                echo "OK   $host: pin matches ($pin)"
-                return 0
-              fi
+            # Split the combined PEM chain into one file per certificate.
+            awk -v D="$tmpdir" 'BEGIN{c=0;inC=0} /BEGIN CERTIFICATE/{c++;inC=1} inC{print > (D "/cert_" c ".pem")} /END CERTIFICATE/{inC=0}' "$tmpdir/chain.pem"
+            local rc=1 spki
+            for cf in "$tmpdir"/cert_*.pem; do
+              [ -e "$cf" ] || continue
+              spki=$(openssl x509 -in "$cf" -pubkey -noout 2>/dev/null \
+                | openssl pkey -pubin -outform der 2>/dev/null \
+                | openssl dgst -sha256 -binary 2>/dev/null \
+                | openssl base64 -A 2>/dev/null)
+              [ -n "$spki" ] || continue
+              echo "     $host: cert SPKI=$spki"
+              for expected in "$@"; do
+                if [ "$spki" = "$expected" ]; then
+                  echo "OK   $host: pin matches ($spki)"
+                  rc=0
+                fi
+              done
             done
-            echo "FAIL $host: live SPKI=$pin not in configured pin set"
-            return 2
+            rm -rf "$tmpdir"
+            if [ "$rc" -ne 0 ]; then
+              echo "FAIL $host: no certificate in live chain matched configured pin set"
+              return 2
+            fi
+            return 0
           }
           rc=0
           check_pin raw.githubusercontent.com \
             "u5HUV+53eJaqAZQekPBc2vbRb9LvpJzlK8dhGLIPF+o=" \
+            "p4MbBTfU3MTzqPxM2Cjv0q3WON8L6FqSzam65NVEkcM=" \
             "k2v657xBsOVe1PQRwWoDp9Fxfi2I4l4GlRnNfCeIDrI=" \
             "RRM1dGqnDFsCJXBTHky16vi1obOlCgFFn/yOhI/y+ho=" || rc=$?
           check_pin api.github.com \
             "cgAMm7z20VINmtPjImmTrEl882gSBr0fIhdLTtHveyY=" \
+            "S2LUIbq4yUg5w+MYbj5LZOWAZAzaeNGJ9rTTc4GjvBQ=" \
             "k2v657xBsOVe1PQRwWoDp9Fxfi2I4l4GlRnNfCeIDrI=" \
             "RRM1dGqnDFsCJXBTHky16vi1obOlCgFFn/yOhI/y+ho=" || rc=$?
           # Cloudflare: tolerant of network-blocked environments.
           check_pin cloudflare-dns.com \
             "yio0sMlhW0kS4fJo1pJl0tF6TvG3EKGY0pmMgkGnVY=" \
-            "i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY=" || true
+            "i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY=" \
+            "ltQ6aXy3tqpNZKJdnevMD7oR+IsI5rNWbOssFDrl+Ew=" || true
           if [ "$rc" -ne 0 ]; then
             echo "::error::certificate pin mismatch detected"
             exit "$rc"

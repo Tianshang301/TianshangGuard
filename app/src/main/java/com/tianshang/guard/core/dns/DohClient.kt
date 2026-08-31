@@ -27,9 +27,12 @@ class DohClient(
         private const val DOH_TIMEOUT_MS = 3000L
         private val DNS_MEDIA_TYPE = "application/dns-message".toMediaType()
         // Cloudflare certificate pins for the primary DoH endpoint.
+        // First two: local edge leaves; third: US/Azure edge leaf observed on CI
+        // (2026-08-31). Cloudflare serves different leaf certs per region/edge.
         private val CLOUDFLARE_PINNER = CertificatePinner.Builder()
             .add("cloudflare-dns.com", "sha256/yio0sMlhW0kS4fJo1pJl0tF6TvG3EKGY0pmMgkGnVY=")
             .add("cloudflare-dns.com", "sha256/i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY=")
+            .add("cloudflare-dns.com", "sha256/ltQ6aXy3tqpNZKJdnevMD7oR+IsI5rNWbOssFDrl+Ew=")
             .build()
 
         private val DEFAULT_ENDPOINTS = listOf(

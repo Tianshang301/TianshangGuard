@@ -1,9 +1,11 @@
 package com.tianshang.guard.data.local.security
 
 import android.content.Context
+import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.security.keystore.StrongBoxUnavailableException
+import androidx.annotation.RequiresApi
 import androidx.room.Room
 import com.tianshang.guard.core.util.SecureLog
 import com.tianshang.guard.data.local.database.AlertEntity
@@ -348,6 +350,18 @@ class EncryptedDatabaseProvider(private val context: Context) {
             KeyProperties.KEY_ALGORITHM_AES,
             KEYSTORE_PROVIDER
         )
+        // H-04: setIsStrongBoxBacked()/StrongBoxUnavailableException are API 28+.
+        // Gate on SDK so lint's NewApi check passes while still preferring
+        // StrongBox where available, then falling back to a TEE-bound key.
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            createStrongBoxOrTeeKey(keyGenerator)
+        } else {
+            createTeeKey(keyGenerator)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun createStrongBoxOrTeeKey(keyGenerator: KeyGenerator): SecretKey {
         val strongBoxSpec = KeyGenParameterSpec.Builder(
             KEY_ALIAS,
             KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
@@ -357,15 +371,6 @@ class EncryptedDatabaseProvider(private val context: Context) {
             .setKeySize(256)
             .setIsStrongBoxBacked(true)
             .build()
-        val teeSpec = KeyGenParameterSpec.Builder(
-            KEY_ALIAS,
-            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-        )
-            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-            .setKeySize(256)
-            .build()
-
         return try {
             keyGenerator.init(strongBoxSpec)
             secureStorageHardwareBacked = true
@@ -376,9 +381,21 @@ class EncryptedDatabaseProvider(private val context: Context) {
             // denial of service). The weaker protection level is flagged via
             // [secureStorageHardwareBacked].
             SecureLog.w("EncryptedDatabaseProvider", "StrongBox unavailable; using TEE-backed key", e)
-            keyGenerator.init(teeSpec)
-            secureStorageHardwareBacked = false
-            keyGenerator.generateKey()
+            createTeeKey(keyGenerator)
         }
+    }
+
+    private fun createTeeKey(keyGenerator: KeyGenerator): SecretKey {
+        val teeSpec = KeyGenParameterSpec.Builder(
+            KEY_ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+        )
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(256)
+            .build()
+        keyGenerator.init(teeSpec)
+        secureStorageHardwareBacked = false
+        return keyGenerator.generateKey()
     }
 }

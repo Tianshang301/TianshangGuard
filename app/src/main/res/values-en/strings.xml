@@ -184,4 +184,6 @@
     <string name="qr_scan_title">QR Code Detection</string>
     <string name="nav_qr">QR</string>
     <string name="action_scan_qr">Scan QR</string>
+    <string name="encryption_warning_title">Database Not Encrypted</string>
+    <string name="encryption_warning_body">Secure storage is unavailable on this device. Protection records are kept only in the memory of this session and will be lost when the app closes without encryption protection. Run on a supported device for full protection.</string>
 </resources>

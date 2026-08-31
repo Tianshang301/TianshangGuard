@@ -176,4 +176,8 @@
     <string name="export_log_header">TianshangGuard Blocking Log</string>
     <string name="export_log_timestamp">Export Time:</string>
     <string name="export_share_chooser_title">Export Logs</string>
+
+    <!-- Secure storage warning (shown when SQLCipher is unavailable) -->
+    <string name="encryption_warning_title">Database Not Encrypted</string>
+    <string name="encryption_warning_body">Secure storage is unavailable on this device. Protection records are kept only in the memory of this session and will be lost when the app closes without encryption protection. Run on a supported device for full protection.</string>
 </resources>
