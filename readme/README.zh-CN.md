@@ -71,17 +71,10 @@
 
 ### 安全审计修复（2026-08）
 
-2026-08-28 全维度源码安全审计发现 20 项问题（3 Critical / 7 High / 6 Medium / 4 Low），已在 `main` 全部修复：
-
-- **C-01** — 无密钥 SHA-256 规则"签名" → **Ed25519 公钥验签**，规范化负载 + 防重放
-- **C-02** — DoH 明文 UDP 降级 → **fail-closed**（多端点 DoH，失败返回 SERVFAIL，DNS 响应问题节校验）
-- **C-03** — SQLCipher 静默明文回退 → **fail-closed** 易失性内存库 + UI 警告
-- **H-01..H-07** — 按模型独立 ML 回退、VPN 有界并发 + 限流、规则/过滤器同步、StrongBox/TEE 密钥、多 SPKI 证书固定、release R8 混淆 + lint、CI Actions SHA 固定 + 最小权限
-- **M-01..M-06** — 同形字品牌感知检测、Web3 注册域解析、屏幕共享 UID/MediaProjection 信号、反馈 SHA-256 哈希、训练脚本加固（`weights_only`、回环 + token 鉴权）、wrapper SHA-256 + 备份排除
-- **L-01..L-04** — 纯 DoH 保活、访问记录留存开关 + 30 天清理、URL 规范化修复、死代码移除
+2026-08-28 全维度源码安全审计发现 **20 项问题（3 Critical / 7 High / 6 Medium / 4 Low），已在 `main` 全部修复**。要点：Ed25519 规则验签、DoH fail-closed（无明文降级）、SQLCipher fail-closed、StrongBox/TEE 密钥、多 SPKI 证书固定、R8 混淆 + CI 加固。逐项修复详情见 [CHANGELOG.md](../CHANGELOG.md) 与 [SECURITY.md](../SECURITY.md)。
 
 ### Bug 修复与稳定性
-- **59 个安全审计问题识别**：修复 26 个 P0/P1（12 Critical + 14 High），33 个 P2 延至 v1.6.0
+- **59 个安全审计问题识别**（v1.2.2 全量代码审计, 2026-06-28）：修复 26 个 P0/P1（12 Critical + 14 High），33 个 P2 延至 v1.6.0 — 与 2026-08 安全审计（20 项，全部修复）为两次独立审计
 - **CIPHER_HOOK 统一**：所有 SQLCipher 数据库连接使用一致的加密参数
 - **CIPHER_HOOK 不匹配修复**：测试辅助函数和生产代码共享同一 `SQLiteDatabaseHook`，消除 "file is not a database" 错误
 - **迁移引擎重写**：用 Android SQLite 读取 + Room DAOs 写入的管道替代不可用的 `sqlcipher_export()`

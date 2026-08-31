@@ -71,17 +71,10 @@ Open-source Android anti-fraud tool with a layered defense architecture. **All a
 
 ### Security Audit Remediation (2026-08)
 
-A full-source security audit (2026-08-28) identified 20 findings (3 Critical / 7 High / 6 Medium / 4 Low); all are remediated in `main`:
-
-- **C-01** — Keyless SHA-256 rule "signature" → **Ed25519 public-key verification** with canonical payload + replay protection
-- **C-02** — DoH plaintext-UDP downgrade → **fail-closed** (multi-endpoint DoH, SERVFAIL on failure, DNS response question-section validation)
-- **C-03** — SQLCipher silent plaintext fallback → **fail-closed** volatile in-memory DB + UI warning
-- **H-01..H-07** — Per-model ML fallback, VPN bounded concurrency + rate limiting, rule/filter sync, StrongBox/TEE key, multi-SPKI pin set, release R8 minify + lint, CI SHA-pinned actions + least-privilege
-- **M-01..M-06** — Homograph brand-aware detection, Web3 registrable-domain parsing, screen-share UID/MediaProjection signals, SHA-256 feedback hash, training-script hardening (`weights_only`, loopback + token auth), wrapper SHA-256 + backup exclusions
-- **L-01..L-04** — DoH-only keepalive, visit-history retention toggle + 30-day purge, URL normalization fix, dead code removal
+A full-source security audit (2026-08-28) identified **20 findings (3 Critical / 7 High / 6 Medium / 4 Low); all are remediated in `main`**. Highlights: Ed25519 rule signing, fail-closed DoH (no plaintext fallback), fail-closed SQLCipher, StrongBox/TEE keys, multi-SPKI pinning, R8 minify + CI hardening. Full per-finding detail: [CHANGELOG.md](CHANGELOG.md#security-remediation-2026-08-28-audit) and [SECURITY.md](SECURITY.md).
 
 ### Bug Fixes & Stability
-- **59 security audit bugs identified**: 26 P0/P1 fixed (12 Critical + 14 High), 33 P2 deferred to v1.6.0
+- **59 security audit bugs identified** (v1.2.2 full code audit, 2026-06-28): 26 P0/P1 fixed (12 Critical + 14 High), 33 P2 deferred to v1.6.0 — a separate audit from the 2026-08 security audit (20 findings, all fixed)
 - **CIPHER_HOOK alignment**: All SQLCipher database connections now use consistent encryption parameters (cipher_page_size, kdf_iter, HMAC algorithm)
 - **CIPHER_HOOK mismatch fixed**: Test helpers and production code now share the same `SQLiteDatabaseHook`, eliminating "file is not a database" errors
 - **Migration engine rewritten**: Replaced `sqlcipher_export()` (incompatible with Android SQLite) with read-via-Android-SQLite + write-via-Room-DAOs pipeline

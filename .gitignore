@@ -140,8 +140,9 @@ scripts/dashboard.html
 docs/japanese_sms_prompt.md
 docs/japanese_sms_text.csv
 
-# Markdown files (exclude all except README and CHANGELOG)
+# Markdown files (exclude all except README, CHANGELOG and SECURITY)
 *.md
 !README.md
 !readme/README.zh-CN.md
 !CHANGELOG.md
+!SECURITY.md
